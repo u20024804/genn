@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # BASH SCRIPT TO LINK SPINEML TO GENN
-# ALEX COPE - 2013
+# ALEX COPE - 2013-2014
 # UNIVERSITY OF SHEFFIELD
 
 #exit on first error
@@ -70,22 +70,19 @@ echo "Creating sim.cu file..."
 xsltproc -o sim.cu SpineML_2_GeNN_sim.xsl model/experiment.xml
 echo "Done"
 echo "Running GeNN code generation..."
-if [[ -z ${GENN_PATH+x} ]]; then
+if [[ -z ${GeNNPATH+x} ]]; then
 echo "Sourcing .bashrc as environment does not seem to be correct"
 source ~/.bashrc
 fi
-if [[ -z ${GENN_PATH+x} ]]; then
+if [[ -z ${GeNNPATH+x} ]]; then
 error_exit "The system environment is not correctly configured"
 fi
 
-# update the tools
-cd $GeNNPATH/tools
-make
-cd -
 #check the directory is there
 mkdir -p $GeNNPATH/userproject/model_project
 cp extra_neurons.h $GeNNPATH/lib/include/
 cp extra_postsynapses.h $GeNNPATH/lib/include/
+cp extra_weightupdates.h $GeNNPATH/lib/include/
 cp rng.h $GeNNPATH/userproject/model_project/
 cp Makefile $GeNNPATH/userproject/model_project/
 cp model.cc $GeNNPATH/userproject/model_project/model.cc
@@ -93,8 +90,8 @@ cp sim.cu $GeNNPATH/userproject/model_project/sim.cu
 if cp model/*.bin $GeNNPATH/userproject/model_project/; then
 	echo "Copying binary data..."	
 fi
-cd $GENN_PATH/userproject/model_project
-../../lib/bin/buildmodel model $DBGMODE
+cd $GeNNPATH/userproject/model_project
+../../lib/bin/buildmodel.sh model $DBGMODE
 make clean
 make
 
