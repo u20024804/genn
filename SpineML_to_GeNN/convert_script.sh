@@ -7,18 +7,51 @@
 #exit on first error
 set -e
 
+
+# get the command line options...
+while getopts w:srm:o:n:a:vV\? opt
+do
+case "$opt" in
+w)  GENN_2_BRAHMS_DIR="$OPTARG"
+;;
+s)  REBUILD_SYSTEMML="false"
+;;
+r)  REBUILD_COMPONENTS="true"
+;;
+m)  MODEL_DIR="$OPTARG"
+;;
+o)  OUTPUT_DIR="$OPTARG"
+;;
+n)  NODES="$OPTARG"
+;;
+a)  NODEARCH="$OPTARG"
+;;
+v)  VERBOSE_BRAHMS="--d"
+;;
+V)  VERBOSE_BRAHMS="--dd"
+;;
+\?) usage
+;;
+esac
+done
+shift `expr $OPTIND - 1`
+
 # What OS are we?
 if [ $(uname) = 'Linux' ]; then
-    OS='Linux'
-elif [ $(uname) = 'Windows_NT' ] || [ $(uname) = 'MINGW32_NT-6.1' ]; then
-    OS='Windows'
+if [ $(uname -i) = 'i686' ]; then
+OS='Linux'
 else
-    OS='OSX'
+OS='Linux'
+fi
+elif [ $(uname) = 'Windows_NT' ] || [ $(uname) = 'MINGW32_NT-6.1' ]; then
+OS='Windows'
+else
+OS='OSX'
 fi
 
 echo ""
 echo "Converting SpineML to GeNN"
-echo "Alex Cope             2013"
+echo "Alex Cope             2014"
 echo "##########################"
 echo ""
 echo "Creating extra_neurons.h file with new neuron_body components..."
@@ -44,11 +77,20 @@ fi
 if [[ -z ${GENN_PATH+x} ]]; then
 error_exit "The system environment is not correctly configured"
 fi
-cp extra_neurons.h $GENN_PATH/lib/include/
-cp extra_postsynapses.h $GENN_PATH/lib/include/
-cp extra_weightupdates.h $GeNNPATH/lib/include/
-cp sim.cu $GENN_PATH/userproject/model_project/sim.cu
-if cp model/*.bin $GENN_PATH/userproject/model_project/; then
+
+# update the tools
+cd $GeNNPATH/tools
+make
+cd -
+#check the directory is there
+mkdir -p $GeNNPATH/userproject/model_project
+cp extra_neurons.h $GeNNPATH/lib/include/
+cp extra_postsynapses.h $GeNNPATH/lib/include/
+cp rng.h $GeNNPATH/userproject/model_project/
+cp Makefile $GeNNPATH/userproject/model_project/
+cp model.cc $GeNNPATH/userproject/model_project/model.cc
+cp sim.cu $GeNNPATH/userproject/model_project/sim.cu
+if cp model/*.bin $GeNNPATH/userproject/model_project/; then
 	echo "Copying binary data..."	
 fi
 cd $GENN_PATH/userproject/model_project
@@ -64,7 +106,7 @@ cd bin/linux/release
 fi
 if [ $OS = 'OSX' ]; then
 if mv *.bin bin/darwin/release/; then
-	echo "Moving binary data..."	
+echo "Moving binary data..."
 fi
 cd bin/darwin/release
 fi
