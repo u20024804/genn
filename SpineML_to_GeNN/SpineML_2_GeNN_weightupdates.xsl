@@ -15,7 +15,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:SMLLOWNL="http://www.shef
 
 <!-- LOW LEVEL SCHEMA -->
 <xsl:when test="SMLLOWNL:SpineML">
-
+	weightUpdateModel wu;
 <!-- EXTRACT NEW WEIGHTUPDATE TYPES FROM SYNAPSES -->
 <xsl:for-each select="/SMLLOWNL:SpineML/SMLLOWNL:Population/SMLLOWNL:Neuron">
 	<xsl:variable name="curr_nrn" select="."/>

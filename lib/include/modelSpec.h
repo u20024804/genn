@@ -44,7 +44,7 @@ unsigned int IZHIKEVICH_V; //!< Macro attaching the name "IZHIKEVICH_V" to neuro
 unsigned int NSYNAPSE;  //!< Variable attaching  the name NSYNAPSE to predefined synapse type 0, which is a non-learning synapse
 unsigned int NGRADSYNAPSE; //!< Variable attaching  the name NGRADSYNAPSE to predefined synapse type 1 which is a graded synapse wrt the presynaptic voltage
 unsigned int LEARN1SYNAPSE; //!< Variable attaching  the name LEARN1SYNAPSE to the predefined synapse type 2 which is a learning using spike timing; uses a primitive STDP rule for learning
-
+#define MAXSYN 3
 
 //input type
 #define NOINP 0 //!< Macro attaching  the name NOINP (no input) to 0

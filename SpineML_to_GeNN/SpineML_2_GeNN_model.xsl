@@ -362,6 +362,7 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 	<!-- WRITE OUT THE MODEL SETUP FUNCTION -->
 	<!---->void modelDefinition(NNmodel &amp;model) 
 <!---->{
+	initGeNN();
 <!---->	model.setGPUDevice(0); 
 <!---->	model.setName("<xsl:value-of select="translate(/SMLLOWNL:SpineML/@name,' ','_')"/>");<!---->
 	<!-- ADD POPULATIONS -->
