@@ -83,6 +83,9 @@ if [[ -z ${GENN_PATH+x} ]]; then
 error_exit "The system environment is not correctly configured"
 fi
 
+# make athe dir for the logs
+mkdir -p temp
+
 #check the directory is there
 mkdir -p $GENN_PATH/userproject/model_project
 cp extra_neurons.h $GENN_PATH/lib/include/

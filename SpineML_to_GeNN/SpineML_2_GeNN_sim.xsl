@@ -38,6 +38,7 @@ CStopWatch timer;
 
 #include "model.cc"
 #include "<xsl:value-of select="translate(/SMLLOWNL:SpineML/@name,' ','_')"/>_CODE/runner.cc"
+#include &lt;algorithm&gt;
 
 #define CPU 0
 #define GPU 1
@@ -80,6 +81,19 @@ bool sortConn (conn a,conn b)
 { 
 	if (a.src &lt; b.src) return true;
 	if (a.src == b.src &amp;&amp; a.dst &lt; b.dst) return true;
+	return false;
+}
+
+struct prop {
+	unsigned int ind;
+	float val;
+};
+
+// sorting function for properties
+
+bool sortProp (prop a,prop b) 
+{ 
+	if (a.ind &lt; b.ind) return true;
 	return false;
 }
 
@@ -204,37 +218,47 @@ Error: This should be a native type - so I'm not implementing it for now
 		</xsl:when>
 		<xsl:when test="SMLNL:AllToAllConnection">
 			<xsl:for-each select="SMLLOWNL:WeightUpdate/SMLNL:Property">
+				<xsl:variable name="propName" select="@name"/>
 				<xsl:variable name="synapse_array_name">
 					<xsl:if test="document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeGradedSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeLearningSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeSynapse'">
-						<xsl:value-of select="concat('gpSynapse',position())"/>_<xsl:value-of select="translate(../../../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../../../@dst_population,' -','SH')"/>
+						<xsl:value-of select="concat('gp',$varName)"/>
 					</xsl:if>
 					<xsl:if test="not(document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeGradedSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeLearningSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeSynapse')">
-						<xsl:value-of select="concat(@name ,'_WUSynapse',position())"/>_<xsl:value-of select="translate(../../../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../../../@dst_population,' -','SH')"/>
+						<xsl:value-of select="concat(@name ,'_WU',$varName)"/>
 					</xsl:if>
 				</xsl:variable>
 				<xsl:if test="SMLNL:UniformDistribution">
-					<!-- loop connections and fill in memory array -->
-					//
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;
+<!---->				<!-- loop connections and fill in memory array -->
 <!---->				<!---->	for (int i = 0; i &lt; <xsl:value-of select="concat($src_size,'*',$dst_size)"/>; ++i) {
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <!---->
 					<!---->uniformRand(<xsl:value-of select="SMLNL:UniformDistribution/@minimum"/>,<xsl:value-of select="SMLNL:UniformDistribution/@maximum"/>);			
 <!---->				<!---->	}
 <!---->			</xsl:if>
 				<xsl:if test="SMLNL:NormalDistribution">
-					<!-- loop connections and fill in memory array -->
-					//
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;
+<!---->				<!-- loop connections and fill in memory array -->
 <!---->				<!---->	for (int i = 0; i &lt; <xsl:value-of select="concat($src_size,'*',$dst_size)"/>; ++i) {
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <!---->
 					<!---->normalRand(<xsl:value-of select="SMLNL:NormalDistribution/@mean"/>,<xsl:value-of select="SMLNL:NormalDistribution/@variance"/>);			
 <!---->				<!---->	}
 <!---->			</xsl:if>
 				<xsl:if test="SMLNL:PoissonDistribution">
-					<!-- loop connections and fill in memory array -->
-					//
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;
+<!---->				<!-- loop connections and fill in memory array -->
 <!---->				<!---->	for (int i = 0; i &lt; <xsl:value-of select="concat($src_size,'*',$dst_size)"/>; ++i) {
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = poissonRand();			
 <!---->				<!---->	}
 <!---->			</xsl:if>
+				<xsl:if test="SMLNL:FixedValue and document(../@url)//SMLCL:StateVariable[@name=$propName]">
+					<!-- loop connections and fill in memory array -->
+					<!---->	for (int i = 0; i &lt; <xsl:value-of select="concat($src_size,'*',$dst_size)"/>; ++i) {		
+<!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <xsl:value-of select="SMLNL:FixedValue/@value"/>;
+<!---->				<!---->	}
+				</xsl:if>
 			</xsl:for-each>
 		</xsl:when>
 		<xsl:when test="SMLNL:ConnectionList | SMLNL:FixedProbabilityConnection">
@@ -256,23 +280,23 @@ Error: Explicit delays used - these are not yet supported so won't affect anythi
 			</xsl:if>
 			<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile">
 				<!-- binary file time - let's go! -->
-				<xsl:if test="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='0'">
+				<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='0'">
 				<!---->	vector &lt; conn &gt; tempConns<xsl:value-of select="$varName"/>;
 <!---->			</xsl:if>
-				<xsl:if test="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='1'">
+				<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='1'">
 				<!---->	vector &lt; conn_with_delay &gt; tempConns<xsl:value-of select="$varName"/>;
 <!---->			</xsl:if>
-				<!---->	tempConns<xsl:value-of select="$varName"/>.resize(<xsl:value-of select="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>);
+				<!---->	tempConns<xsl:value-of select="$varName"/>.resize(<xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>);
 <!---->			<!---->	{ // scope to allow us to reuse the file name locally
 <!---->			<!---->	FILE * conn_file;
-<!---->			<!---->	conn_file = fopen("<xsl:value-of select="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@file_name"/>","rb");
+<!---->			<!---->	conn_file = fopen("<xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@file_name"/>","rb");
 <!---->			<!---->	if (!conn_file) {
 <!---->			<!---->		cerr &lt;&lt; "Error opening binary connection file\n\n"; exit(-1);}
-<!---->			<xsl:if test="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='0'">
-				<!---->	fread(&amp;tempConns<xsl:value-of select="$varName"/>[0], sizeof(conn), <xsl:value-of select="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>,conn_file);
+<!---->			<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='0'">
+				<!---->	fread(&amp;tempConns<xsl:value-of select="$varName"/>[0], sizeof(conn), <xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>,conn_file);
 <!---->			</xsl:if>
-				<xsl:if test="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='1'">
-				<!---->	fread(&amp;tempConns<xsl:value-of select="$varName"/>[0], sizeof(conn_with_delay), <xsl:value-of select="../../SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>,conn_file);
+				<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile/@explicit_delay_flag='1'">
+				<!---->	fread(&amp;tempConns<xsl:value-of select="$varName"/>[0], sizeof(conn_with_delay), <xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>,conn_file);
 <!---->			</xsl:if>
 <!---->			<!---->	}
 			</xsl:if>
@@ -288,7 +312,7 @@ Error: Explicit delays used - these are not yet supported so won't affect anythi
 			<!-- SPARSE CONNECTIVITY -->
 			<xsl:if test="not(number(SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count(.//SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number(.//@num_connections) div number($maxConnSize))>number(0.1)) ">
 				<!---->	//sort the connections
-<!---->			<!---->	sort(tempConns<xsl:value-of select="$varName"/>.begin(), tempConns<xsl:value-of select="$varName"/>.end(), sortConn);		
+<!---->			<!---->	std::sort(tempConns<xsl:value-of select="$varName"/>.begin(), tempConns<xsl:value-of select="$varName"/>.end(), sortConn);		
 <!---->			<!---->	// now we have the sorted connections we can create the sparse array
 <!---->			<!---->	//memset(g<xsl:value-of select="$varName"/>.gp, 0, sizeof(float)*tempConns<xsl:value-of select="$varName"/>.size());
 <!---->			<!---->	memset(g<xsl:value-of select="$varName"/>.gIndInG, 0, sizeof(unsigned int)*<xsl:value-of select="$src_size"/>);
@@ -306,15 +330,24 @@ Error: Explicit delays used - these are not yet supported so won't affect anythi
 <!---->			<!---->		// now log the dst index
 <!---->			<!---->		g<xsl:value-of select="$varName"/>.gInd[ind] = tempConns<xsl:value-of select="$varName"/>[ind].dst;
 <!---->			<!---->	}
+<!---->			<!---->	// fill in the last running index
+<!---->			<!---->	g<xsl:value-of select="$varName"/>.gIndInG[currentSrcIndex+1] = tempConns<xsl:value-of select="$varName"/>.size();
 <!---->			<!---->	// fill in the remaining indices...
-<!---->			<!---->	unsigned int last_val =  g<xsl:value-of select="$varName"/>.gIndInG[currentSrcIndex+1];
-<!---->			<!---->	for (int ind = currentSrcIndex+2; ind &lt; <xsl:value-of select="$src_size"/>; ++ind) {
-<!---->			<!---->		g<xsl:value-of select="$varName"/>.gIndInG[ind] = last_val;
+<!---->			<!---->	for (int ind = currentSrcIndex+2; ind &lt; <xsl:value-of select="$src_size"/>+1; ++ind) {
+<!---->			<!---->		g<xsl:value-of select="$varName"/>.gIndInG[ind] = tempConns<xsl:value-of select="$varName"/>.size();
 <!---->			<!---->	}
 <!---->			<!---->	}
+/*for (int i = 0; i &lt; <xsl:value-of select="$src_size"/>+1; ++i) {
+cout &lt;&lt; g<xsl:value-of select="$varName"/>.gIndInG[i] &lt;&lt; " IndSrc" &lt;&lt; endl;
+}
+for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
+cout &lt;&lt; g<xsl:value-of select="$varName"/>.gInd[i] &lt;&lt; " IndDst" &lt;&lt; endl;
+}*/
 			</xsl:if>
 			<xsl:variable name="syn" select="."/>
+			<!-- ################ PROPERTIES ########################-->
 			<xsl:for-each select="SMLLOWNL:WeightUpdate/SMLNL:Property">
+			<xsl:variable name="propName" select="@name"/>
 			<xsl:variable name="synapse_array_name">
 				<xsl:if test="document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeGradedSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeLearningSynapse' or document(../@url)//SMLCL:ComponentClass/@name='GeNNNativeSynapse'">
 					<xsl:value-of select="concat('gpSynapse',position())"/>_<xsl:value-of select="translate(../../../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../../../@dst_population,' -','SH')"/>
@@ -331,19 +364,53 @@ Error: Explicit delays used - these are not yet supported so won't affect anythi
 				<xsl:value-of select="concat('sizeof(float)*',$src_size,'*',$dst_size)"/>);
 <!---->		</xsl:if>
 				<xsl:if test="SMLNL:ValueList">
-					<xsl:message terminate="yes">
-Error: ValueList 'g' not implemented yet
-					</xsl:message>
-					<!-- loop connections and fill in memory array -->
-					<!---->	for (int i = 0; i &lt; connections.size(); ++i) {
-<!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
-					1 <!-- Need to read in file and do some crap here -->;			
+					<xsl:if test="$syn/SMLNL:FixedProbabilityConnection">
+						<xsl:message terminate="yes">
+Error: ValueList and FixedProbabilityConnection is a problem - so we don't support it
+						</xsl:message>
+					</xsl:if>
+<!---->				<!---->	// Extract the data from whereever first of all
+<!---->				<!---->	{vector &lt; prop &gt; tempProp; prop newProp;					
+<!---->				<!-- IF ENCAPSULATED -->
+					<xsl:if test="count(SMLNL:ValueList/SMLNL:Value)>0">
+						<xsl:for-each select=".//SMLNL:Value">
+<!---->				<!---->	newProp.ind = <xsl:value-of select="@index"/>; newProp.val = <xsl:value-of select="@value"/>; 
+<!---->				<!---->	tempProp.push_back(newProp);	
+<!---->					</xsl:for-each>
+<!---->				</xsl:if>
+					<!-- IF BINARY DATA -->
+					<xsl:if test="SMLNL:ValueList/SMLNL:BinaryFile">
+// file_name num_elements
+<!---->				<!---->	FILE * data = fopen("<xsl:value-of select="SMLNL:ValueList/SMLNL:BinaryFile/@file_name"/>","rb");		
+<!---->				<!---->	if (!data) {cerr &lt;&lt; "Error: could not open Property binary file"; exit(-1);}	
+<!---->				<!---->	tempProp.resize(<xsl:value-of select="SMLNL:ValueList/SMLNL:BinaryFile/@num_elements"/>);
+<!---->				<!---->	fread(&amp;(tempProp[0]), sizeof(prop), <xsl:value-of select="SMLNL:ValueList/SMLNL:BinaryFile/@num_elements"/>, data);			
+<!---->				</xsl:if>
+<!---->				<!----> // sort data
+<!---->				<!----> std::sort(tempProp.begin(),tempProp.end(),sortProp);
+<!---->				<!-- if DENSE -->
+					<xsl:if test="number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1) ">
+						<!-- loop connections and fill in memory array -->
+						<!---->	for (int i = 0; i &lt; connections.size(); ++i) {
+<!---->					<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
+						1;			
+<!---->					<!---->	}
+<!---->				</xsl:if>
+					<!-- if SPARSE -->
+					<xsl:if test="not(number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1)) ">
+						<!-- loop connections and fill in memory array -->
+						<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
+<!---->					<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = tempProp[i].val;
+<!---->					<!---->	}
+<!---->				</xsl:if>
 <!---->				<!---->	}
 <!---->			</xsl:if>
 				<xsl:if test="SMLNL:UniformDistribution">
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;	
 					<!-- loop connections and fill in memory array -->
-					<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
-					<!-- if DENSE -->
+<!---->					<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
+<!---->					<!-- if DENSE -->
 					<xsl:if test="number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1) ">			
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
 					<!---->uniformRand(<xsl:value-of select="SMLNL:UniformDistribution/@minimum"/>,<xsl:value-of select="SMLNL:UniformDistribution/@maximum"/>);			
@@ -351,14 +418,17 @@ Error: ValueList 'g' not implemented yet
 					<!-- if SPARSE -->
 					<xsl:if test="not(number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1)) ">			
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <!---->
-					<!---->uniformRand(<xsl:value-of select="SMLNL:UniformDistribution/@minimum"/>,<xsl:value-of select="SMLNL:UniformDistribution/@maximum"/>);			
+					<!---->uniformRand(<xsl:value-of select="SMLNL:UniformDistribution/@minimum"/>,<xsl:value-of select="SMLNL:UniformDistribution/@maximum"/>);
+cout &lt;&lt; <xsl:value-of select="$synapse_array_name"/>[i] &lt;&lt; endl;			
 <!---->				</xsl:if>
 <!---->				<!---->	}
 <!---->			</xsl:if>
 				<xsl:if test="SMLNL:NormalDistribution">
-					<!-- loop connections and fill in memory array -->
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;			
+<!---->				<!-- loop connections and fill in memory array -->
 					<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
-					<!-- if DENSE -->
+<!---->				<!-- if DENSE -->
 					<xsl:if test="number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1) ">			
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
 					<!---->normalRand(<xsl:value-of select="SMLNL:NormalDistribution/@mean"/>,<xsl:value-of select="SMLNL:NormalDistribution/@variance"/>);			
@@ -371,9 +441,11 @@ Error: ValueList 'g' not implemented yet
 <!---->				<!---->	}
 <!---->			</xsl:if>
 				<xsl:if test="SMLNL:PoissonDistribution">
-					<!-- loop connections and fill in memory array -->
+<!---->				<!---->	// seed the RNG	
+<!---->				<!---->	rngData.seed = <xsl:value-of select=".//@seed"/>;
+<!---->					<!-- loop connections and fill in memory array -->
 					<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
-					<!-- if DENSE -->
+<!---->					<!-- if DENSE -->
 					<xsl:if test="number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1) ">			
 <!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
 					<!---->poissonRand();			
@@ -385,18 +457,16 @@ Error: ValueList 'g' not implemented yet
 <!---->				</xsl:if>		
 <!---->				<!---->	}
 <!---->			</xsl:if>
-				<xsl:if test="SMLNL:FixedValue">
+				<xsl:if test="SMLNL:FixedValue and document(../@url)//SMLCL:StateVariable[@name=$propName]">
 					<!-- loop connections and fill in memory array -->
 					<!---->	for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
-					<!-- if DENSE -->
+<!---->					<!-- if DENSE -->
 					<xsl:if test="number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1) ">			
-<!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <!---->
-					<!----><xsl:value-of select="value"/>;			
-<!---->				</xsl:if>
+<!---->					<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[connections[i].dst*<xsl:value-of select="$src_size"/>+connections[i].src] = <xsl:value-of select="SMLNL:FixedValue/@value"/>;	 <!---->
+<!---->					</xsl:if>
 					<!-- if SPARSE -->
 					<xsl:if test="not(number($syn/SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count($syn///SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number($syn///@num_connections) div number($maxConnSize))>number(0.1)) ">			
-<!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <!---->
-					<!----><xsl:value-of select="value"/>;		
+<!---->				<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i] = <xsl:value-of select="SMLNL:FixedValue/@value"/>;
 <!---->				</xsl:if>		
 <!---->				<!---->	}
 <!---->			</xsl:if>	
@@ -502,6 +572,10 @@ Error: Native Poisson parameter 'therate' not found or undefined
  	<xsl:variable name="logName"><xsl:value-of select="translate(@target,' ','_')"/>_<xsl:value-of select="@port"/>_log</xsl:variable>
  	
  	FILE * <xsl:value-of select="$logName"/>FILE = fopen("<xsl:value-of select="$log_dir"/>/<xsl:value-of select="$logName"/>.bin","wb");
+	if (!<xsl:value-of select="$logName"/>FILE) {
+		cerr &lt;&lt; "Could not open file for logging: " &lt;&lt; "<xsl:value-of select="$log_dir"/>/<xsl:value-of select="$logName"/>.bin";
+		exit(-1);
+	}
  	<!-- Create the lookup for what to log --> 
  	<xsl:if test="@indices">
  	vector &lt; float &gt; <xsl:value-of select="$logName"/>TEMP;

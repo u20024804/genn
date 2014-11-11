@@ -205,7 +205,7 @@ Error: Random parameter value for '<xsl:value-of select="$curr_par_name"/>' used
 					<!-- NOT CURRENTLY SUPPORTED --> // <xsl:value-of select="position()-1"/> - <xsl:value-of select="$curr_par_name"/>
 					<xsl:text>
 		</xsl:text>
-					<xsl:message terminate="yes">
+					<xsl:message terminate="no">
 Error: Explicit list of parameter values for '<xsl:value-of select="$curr_par_name"/>' used in model - this is not supported by GeNN
 					</xsl:message>
 				</xsl:when>
@@ -232,8 +232,7 @@ Warning: State variable in Synapses are not currently supported by GeNN
 			<xsl:choose>
 				<!-- IF THERE EXISTS A FIXED PROPERTY FOR THIS STATE VARIABLES -->
 				<xsl:when test="count($curr_props[@name=$curr_par_name]/SMLNL:FixedValue)=1 and not($curr_par_type)">
-				<xsl:value-of select="$curr_par_type"/>
-					<!----><xsl:value-of select="$curr_props[@name=$curr_par_name]/SMLNL:FixedValue/@value"/>, // <xsl:value-of select="position()-1"/> - <xsl:value-of select="$curr_par_name"/>
+				<!----><xsl:value-of select="$curr_props[@name=$curr_par_name]/SMLNL:FixedValue/@value"/>, // <xsl:value-of select="position()-1"/> - <xsl:value-of select="$curr_par_name"/>
 					<xsl:text>
 		</xsl:text>				
 				</xsl:when>
@@ -363,6 +362,7 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 	<!-- WRITE OUT THE MODEL SETUP FUNCTION -->
 	<!---->void modelDefinition(NNmodel &amp;model) 
 <!---->{
+<!---->	model.setGPUDevice(0); 
 <!---->	model.setName("<xsl:value-of select="translate(/SMLLOWNL:SpineML/@name,' ','_')"/>");<!---->
 	<!-- ADD POPULATIONS -->
 	<xsl:for-each select="/SMLLOWNL:SpineML/SMLLOWNL:Population"> <!-- FOR-EACH POPULATION -->

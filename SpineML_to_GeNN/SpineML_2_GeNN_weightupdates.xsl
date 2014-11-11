@@ -26,7 +26,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:SMLLOWNL="http://www.shef
   <!-- UNRECOGNISED WEIGHTUPDATE TYPE - GENERATE GeNN CLASS -->
   <!-- Sanity - is the weight update type compatible with GeNN?? -->
   <xsl:if test="not(count(//SMLCL:AnalogSendPort)=0)">
-  	  <xsl:message terminate="yes">
+  	  <xsl:message terminate="no">
 Error: WeightUpdates with AnalogSendPorts are not supported by GeNN
 	</xsl:message>
   </xsl:if>

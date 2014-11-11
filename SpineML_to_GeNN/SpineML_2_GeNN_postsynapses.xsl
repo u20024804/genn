@@ -31,7 +31,7 @@ Error: PostSynapses with EventPorts are not supported by GeNN
 	</xsl:message>
   </xsl:if>
   <xsl:if test="not(count(//SMLCL:ImpulseReceivePort[@name=$curr_ps/@input_dst_port])=1) and count(//SMLCL:ImpulseReceivePort)=1">
-  	  <xsl:message terminate="yes">
+  	  <xsl:message terminate="no">
 Error: PostSynapses must have one ImpulsePort
 	</xsl:message>
   </xsl:if>
@@ -71,7 +71,7 @@ Error: PostSynapses must have one ImpulsePort
      	</xsl:if>
      	<xsl:if test="not($curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src=$curr_ps/../../@dst_population)">
      		<!-- MUCH MORE COMPLICATED - LEAVING FOR NOW! -->
-     		<xsl:message terminate="yes">
+     		<xsl:message terminate="no">
 Error: Connections to PostSynapses from sources other than the destination Neuron are not supported
 			</xsl:message>	
      	</xsl:if>
@@ -84,7 +84,7 @@ Error: Connections to PostSynapses from sources other than the destination Neuro
      	\\<xsl:value-of select="$curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src"/>\\
      	<xsl:if test="not($curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src=$curr_ps/../../@dst_population)">
      		<!-- MUCH MORE COMPLICATED - LEAVING FOR NOW! -->
-     		<xsl:message terminate="yes">
+     		<xsl:message terminate="no">
 Error: Connections to PostSynapses from sources other than the destination Neuron are not supported
 			</xsl:message>	
      	</xsl:if>
