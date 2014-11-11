@@ -164,7 +164,8 @@ Error: Connections to WeightUpdates from sources other than the destination Neur
 			<!-- EMIT IMPULSE -->
 			<xsl:for-each select="SMLCL:ImpulseOut">
 				<!-- this is the output to the linSyn variable - we need to assign the specified SV or Parameter onto it! -->
-				<!---->	linSyn = $(<xsl:value-of select="@port"/>_WU); \n \
+				<!---->	$(addtoinSyn) = $(<xsl:value-of select="@port"/>_WU); \n \
+				$(updatelinsyn); \n \
 <!---->		</xsl:for-each>
 			<!-- END EMIT IMPULSE -->
 			<!-- REGIME CHANGE -->

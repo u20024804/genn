@@ -4,15 +4,17 @@
   wu.varNames.clear();
   wu.varTypes.clear();
   
+  wu.varNames.push_back(tS("g_WU"));
+  wu.varTypes.push_back(tS("float"));
   wu.pNames.clear();
   
-  wu.pNames.push_back(tS("g_WU"));
   //wu.dpNames.clear();
 
   wu.simCode = tS(" \
       { \n \
      } \n \
-  	 	linSyn = $(g_WU); \n \
+  	 	$(addtoinSyn) = $(g_WU); \n \
+				$(updatelinsyn); \n \
 ");
 
   weightUpdateModels.push_back(wu);
@@ -31,7 +33,8 @@
   wu.simCode = tS(" \
       { \n \
      } \n \
-  	 	linSyn = $(g_WU); \n \
+  	 	$(addtoinSyn) = $(g_WU); \n \
+				$(updatelinsyn); \n \
 ");
 
   weightUpdateModels.push_back(wu);
@@ -50,7 +53,8 @@
   wu.simCode = tS(" \
       { \n \
      } \n \
-  	 	linSyn = $(g_WU); \n \
+  	 	$(addtoinSyn) = $(g_WU); \n \
+				$(updatelinsyn); \n \
 ");
 
   weightUpdateModels.push_back(wu);

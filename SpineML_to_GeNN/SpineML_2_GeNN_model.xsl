@@ -383,24 +383,27 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 				<!---->ALLTOALL, <!-- HANDLED NATIVELY -->
 			</xsl:when>
 			<xsl:otherwise>
-				<!---->DENSE, <!-- USE FULL CONNECTION MATRIX - SHOULD CHECK AND USE SPARSE IF LESS DENSE CONNS -->
+				<!-- CALCULATE THE MAX POSSIBLE CONNECTION SIZE -->
+				<xsl:variable name="dstPop" select="../@dst_population"/>
+				<xsl:variable name="maxConnSize" select="number(//SMLLOWNL:Neuron[@name=$dstPop]/@size)*number(../../SMLLOWNL:Neuron/@size)"/>
+				<xsl:choose>
+					<xsl:when test="number(SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count(.//SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number(.//@num_connections) div number($maxConnSize))>number(0.1) ">
+						<!---->DENSE, <!-- USE FULL CONNECTION MATRIX - SHOULD CHECK AND USE SPARSE IF LESS DENSE CONNS -->
+					</xsl:when>
+					<xsl:otherwise>
+						<!---->SPARSE, <!-- USE FULL CONNECTION MATRIX - SHOULD CHECK AND USE SPARSE IF LESS DENSE CONNS -->
+					</xsl:otherwise>
+				</xsl:choose>
 			</xsl:otherwise>
 		</xsl:choose>
-		<!-- FOR NOW WE'LL DETECT G AS A PARAMETER SEPERATE FROM THE OTHERS... -->
-		<xsl:if test="not(SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g'])">
+		<!-- FOR NOW WE'LL DETECT G AS A PARAMETER SEPERATE FROM THE OTHERS... THIS IS NOT NEEDED ANYMORE -->
+		<!--xsl:if test="not(SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g'])">
 			<xsl:message terminate="yes">
 Error: A WeightUpdate component is lacking a value 'g', which is required for GeNN currently... 
 			</xsl:message>
-		</xsl:if>
-		<xsl:if test="count(SMLLOWNL:WeightUpdate/SMLNL:Property/SMLNL:FixedValue)=count(SMLLOWNL:WeightUpdate/SMLNL:Property) and count(SMLNL:AllToAllConnection)=1">
-			<!---->GLOBALG, <!---->
-		</xsl:if>
-		<xsl:if test="count(SMLLOWNL:WeightUpdate/SMLNL:Property/SMLNL:FixedValue)=count(SMLLOWNL:WeightUpdate/SMLNL:Property) and count(SMLNL:AllToAllConnection)=0">
-			<!---->INDIVIDUALID, <!---->
-		</xsl:if>
-		<xsl:if test="not(count(SMLLOWNL:WeightUpdate/SMLNL:Property/SMLNL:FixedValue)=count(SMLLOWNL:WeightUpdate/SMLNL:Property))">
-			<!---->INDIVIDUALG, <!---->
-		</xsl:if>
+		</xsl:if-->
+		<!-- Since custom weight updates have been introduced we now always use GLOBAL G as we handle our own G values -->
+		<!---->GLOBALG, <!---->
 		<!-- NOW HANDLE THE GLOBAL DELAY - FOR NOW WE'LL HARD CODE IT BUT SHOULD DETECT AND FILL THIS IN -->
 		<!---->NO_DELAY, <!---->
 		<!-- POSTSYNAPSE TYPE -->
@@ -421,6 +424,29 @@ Error: A WeightUpdate component is lacking a value 'g', which is required for Ge
 		<xsl:if test="SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue">
 	model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
 <!---->	<xsl:value-of select="SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue/@value"/>);<!---->
+		</xsl:if>
+		<!-- We always have a global 'g', just sometimes we do not use it -->
+		<xsl:if test="not(SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue)">
+	model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
+<!---->	0);<!---->
+		</xsl:if>
+		<!-- For sparse connectivity we need to set the maximum number of connections... -->
+		<xsl:variable name="dstPop" select="../@dst_population"/>
+		<xsl:variable name="maxConnSize" select="number(//SMLLOWNL:Neuron[@name=$dstPop]/@size)*number(../../SMLLOWNL:Neuron/@size)"/>
+		<xsl:if test="count(SMLNL:AllToAllConnection | SMLNL:OneToOneConnectivity) = 0">
+			<xsl:if test="not(number(SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count(.//SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number(.//@num_connections) div number($maxConnSize))>number(0.1))">
+		model.setMaxConn("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>", <!---->
+		<xsl:if test="SMLNL:FixedProbabilityConnection">
+			<xsl:value-of select="number(.//@probability) * number($maxConnSize) * number(2.5)"/><!-- 2.5 is pretty safe I've found -->
+		</xsl:if>
+		<xsl:if test="count(.//SMLNL:Connection) > 0">
+			<xsl:value-of select="count(.//SMLNL:Connection)"/>
+		</xsl:if>
+		<xsl:if test="count(.//@num_connections) > 0">
+			<xsl:value-of select=".//@num_connections"/>
+		</xsl:if>
+		<!----> );
+			</xsl:if>
 		</xsl:if>
 	</xsl:for-each> <!-- END FOR-EACH SYNAPSE -->
 <!---->

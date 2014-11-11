@@ -7,6 +7,8 @@
 #exit on first error
 set -e
 
+MODEL_DIR=$PWD"/model"
+LOG_DIR=$PWD"/temp"
 
 # get the command line options...
 while getopts w:srm:o:n:a:vV\? opt
@@ -49,6 +51,8 @@ else
 OS='OSX'
 fi
 
+echo "*Running XSLT" > $MODEL_DIR/time.txt
+
 echo ""
 echo "Converting SpineML to GeNN"
 echo "Alex Cope             2014"
@@ -67,46 +71,52 @@ echo "Creating model.cc file..."
 xsltproc -o model.cc SpineML_2_GeNN_model.xsl model/experiment.xml
 echo "Done"
 echo "Creating sim.cu file..."
-xsltproc -o sim.cu SpineML_2_GeNN_sim.xsl model/experiment.xml
+xsltproc --stringparam model_dir "$MODEL_DIR" --stringparam log_dir "$LOG_DIR" -o sim.cu SpineML_2_GeNN_sim.xsl model/experiment.xml
 echo "Done"
+#exit(0)
 echo "Running GeNN code generation..."
-if [[ -z ${GeNNPATH+x} ]]; then
+if [[ -z ${GENN_PATH+x} ]]; then
 echo "Sourcing .bashrc as environment does not seem to be correct"
 source ~/.bashrc
 fi
-if [[ -z ${GeNNPATH+x} ]]; then
+if [[ -z ${GENN_PATH+x} ]]; then
 error_exit "The system environment is not correctly configured"
 fi
 
 #check the directory is there
-mkdir -p $GeNNPATH/userproject/model_project
-cp extra_neurons.h $GeNNPATH/lib/include/
-cp extra_postsynapses.h $GeNNPATH/lib/include/
-cp extra_weightupdates.h $GeNNPATH/lib/include/
-cp rng.h $GeNNPATH/userproject/model_project/
-cp Makefile $GeNNPATH/userproject/model_project/
-cp model.cc $GeNNPATH/userproject/model_project/model.cc
-cp sim.cu $GeNNPATH/userproject/model_project/sim.cu
-if cp model/*.bin $GeNNPATH/userproject/model_project/; then
+mkdir -p $GENN_PATH/userproject/model_project
+cp extra_neurons.h $GENN_PATH/lib/include/
+cp extra_postsynapses.h $GENN_PATH/lib/include/
+cp extra_weightupdates.h $GENN_PATH/lib/include/
+cp rng.h $GENN_PATH/userproject/model_project/
+cp Makefile $GENN_PATH/userproject/model_project/
+cp model.cc $GENN_PATH/userproject/model_project/model.cc
+cp sim.cu $GENN_PATH/userproject/model_project/sim.cu
+if cp model/*.bin $GENN_PATH/userproject/model_project/; then
 	echo "Copying binary data..."	
 fi
-cd $GeNNPATH/userproject/model_project
+
+echo "*GeNN code-gen" > $MODEL_DIR/time.txt
+
+cd $GENN_PATH/userproject/model_project
 ../../lib/bin/buildmodel.sh model $DBGMODE
+
+echo "*Compiling..." > $MODEL_DIR/time.txt
 make clean
 make
 
-if [ $OS = 'Linux' ]; then
-if mv *.bin bin/linux/release/; then
-	echo "Moving binary data..."	
-fi
-cd bin/linux/release
-fi
-if [ $OS = 'OSX' ]; then
-if mv *.bin bin/darwin/release/; then
-echo "Moving binary data..."
-fi
-cd bin/darwin/release
-fi
+#if [ $OS = 'Linux' ]; then
+#if mv *.bin bin/linux/release/; then
+#	echo "Moving binary data..."	
+#fi
+#cd bin/linux/release
+#fi
+#if [ $OS = 'OSX' ]; then
+#if mv *.bin bin/darwin/release/; then
+#echo "Moving binary data..."
+#fi
+#cd bin/darwin/release
+#fi
 ./sim
 #rm *.bin
 echo "Done"
