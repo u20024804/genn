@@ -11,9 +11,13 @@ MODEL_DIR=$PWD"/model"
 LOG_DIR=$PWD"/temp"
 
 # get the command line options...
-while getopts w:srm:o:n:a:vV\? opt
+while getopts i:e:w:srm:o:n:a:vV\? opt
 do
 case "$opt" in
+i)  MODEL_DIR="$OPTARG"
+;;
+e)  EXPERIMENT_NAME="experiment$OPTARG.xml"
+;;
 w)  GENN_2_BRAHMS_DIR="$OPTARG"
 ;;
 s)  REBUILD_SYSTEMML="false"
@@ -38,6 +42,14 @@ esac
 done
 shift `expr $OPTIND - 1`
 
+mkdir -p $OUTPUT_DIR/model/
+# Move the model into the output dir for processing....
+cp $MODEL_DIR/* $OUTPUT_DIR/model/
+MODEL_DIR=$OUTPUT_DIR/model/
+
+LOG_DIR=$OUTPUT_DIR/temp
+mkdir -p $LOG_DIR
+
 # What OS are we?
 if [ $(uname) = 'Linux' ]; then
 if [ $(uname -i) = 'i686' ]; then
@@ -59,19 +71,19 @@ echo "Alex Cope             2014"
 echo "##########################"
 echo ""
 echo "Creating extra_neurons.h file with new neuron_body components..."
-xsltproc -o extra_neurons.h SpineML_2_GeNN_neurons.xsl model/experiment.xml
+xsltproc -o extra_neurons.h SpineML_2_GeNN_neurons.xsl $MODEL_DIR/$EXPERIMENT_NAME
 echo "Done"
 echo "Creating extra_postsynapses.h file with new postsynapse components..."
-xsltproc -o extra_postsynapses.h SpineML_2_GeNN_postsynapses.xsl model/experiment.xml
+xsltproc -o extra_postsynapses.h SpineML_2_GeNN_postsynapses.xsl $MODEL_DIR/$EXPERIMENT_NAME
 echo "Done"
 echo "Creating extra_weightupdates.h file with new weightupdate components..."
-xsltproc -o extra_weightupdates.h SpineML_2_GeNN_weightupdates.xsl model/experiment.xml
+xsltproc -o extra_weightupdates.h SpineML_2_GeNN_weightupdates.xsl $MODEL_DIR/$EXPERIMENT_NAME
 echo "Done"
 echo "Creating model.cc file..."
-xsltproc -o model.cc SpineML_2_GeNN_model.xsl model/experiment.xml
+xsltproc -o model.cc SpineML_2_GeNN_model.xsl $MODEL_DIR/$EXPERIMENT_NAME
 echo "Done"
 echo "Creating sim.cu file..."
-xsltproc --stringparam model_dir "$MODEL_DIR" --stringparam log_dir "$LOG_DIR" -o sim.cu SpineML_2_GeNN_sim.xsl model/experiment.xml
+xsltproc --stringparam model_dir "$MODEL_DIR" --stringparam log_dir "$LOG_DIR" -o sim.cu SpineML_2_GeNN_sim.xsl $MODEL_DIR/$EXPERIMENT_NAME
 echo "Done"
 #exit(0)
 echo "Running GeNN code generation..."
