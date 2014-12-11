@@ -155,7 +155,9 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 #ifdef _WIN32
       command << "\"";
 #endif
-      command << "\"" << NVCC << "\" -x cu -cubin -Xptxas=-v -DDT -arch=sm_";
+//      command << "\"" << NVCC << "\" -x cu -cubin -Xptxas=-v -DDT -arch=sm_";
+      command << "\"" << NVCC << "\" -x cu -cubin -Xptxas=-v -DDT=" << DT;
+      command << " -I$CUDA_PATH/samples/common/inc " << " -arch=sm_";
       command << deviceProp[device].major << deviceProp[device].minor << " ";
       command << path << "/" << model->name << "_CODE/runner.cc 2>&1";
 #ifdef _WIN32

@@ -14,12 +14,13 @@
 #include "modelSpec.h"
 #include "modelSpec.cc"
 #include <vector>
+#include "sizes.h"
 
 std::vector<unsigned int> neuronPSize;
 std::vector<unsigned int> neuronVSize;
 std::vector<unsigned int> synapsePSize; 
 
-float *excIzh_p = NULL;
+double *excIzh_p = NULL;
 //Izhikevich model parameters - tonic spiking
 /*	0.02,	// 0 - a
 	0.2, 	// 1 - b
@@ -28,7 +29,7 @@ float *excIzh_p = NULL;
 };*/
 
 
-float *inhIzh_p = NULL;
+double *inhIzh_p = NULL;
 //Izhikevich model parameters - tonic spiking
 /*	0.02,	// 0 - a
 	0.25, 	// 1 - b
@@ -36,7 +37,7 @@ float *inhIzh_p = NULL;
 	2 	// 3 - d
 };*/
 
-float IzhExc_ini[6]={
+double IzhExc_ini[6]={
 //Izhikevich model initial conditions - excitatory population
 	-65.0,	//0 - V
 	 0.0,	//1 - U
@@ -46,7 +47,7 @@ float IzhExc_ini[6]={
 	 8.0 	// 3 - d
 };
 
-float IzhInh_ini[6]={
+double IzhInh_ini[6]={
 //Izhikevich model initial conditions - inhibitory population
 	-65,	//0 - V
 	 0.0,	//1 - U
@@ -56,27 +57,26 @@ float IzhInh_ini[6]={
 	 2.0 	// 3 - d 
 };
 
-float SynIzh_p[3]= {
-  0.0,           // 0 - Erev: Reversal potential
-  30.0,         // 1 - Epre: Presynaptic threshold potential
-  1.0            // 2 - tau_S: decay time constant for S [ms]
-};
+double *SynIzh_p= NULL;
 
-float postExpP[2]={
+double postExpP[2]={
   0.0,            // 0 - tau_S: decay time constant for S [ms]
   0.0		  // 1 - Erev: Reversal potential
 };
 
-float *postSynV = NULL;
+double *postSynV = NULL;
 
+double SynIzh_ini[1]= {
+    0.0 // default synaptic conductance
+};
 
-//float inpIzh1 = 4.0;
-//float gIzh1= 0.05;
-//float * input1, *input2;
-#include "../../userproject/include/sizes.h"
+//double inpIzh1 = 4.0;
+//double gIzh1= 0.05;
+//double * input1, *input2;
 
 void modelDefinition(NNmodel &model) 
 {
+    initGeNN();
   //model.setGPUDevice(0); //force using device 0
   model.setName("Izh_sparse");
   model.addNeuronPopulation("PExc", _NExc, IZHIKEVICH_V, excIzh_p, IzhExc_ini);
@@ -88,22 +88,22 @@ void modelDefinition(NNmodel &model)
   neuronPSize.push_back(0);
   neuronVSize.push_back(sizeof IzhInh_ini);
   
-  model.addSynapsePopulation("Exc_Exc", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PExc", "PExc", SynIzh_p, postSynV, postExpP); 
+  model.addSynapsePopulation("Exc_Exc", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PExc", "PExc", SynIzh_ini, SynIzh_p, postSynV, postExpP); 
   //model.setSynapseG("Exc_Exc", gIzh1);
   synapsePSize.push_back(sizeof SynIzh_p);
   
   
-  model.addSynapsePopulation("Exc_Inh", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PExc", "PInh", SynIzh_p, postSynV, postExpP); 
+  model.addSynapsePopulation("Exc_Inh", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PExc", "PInh", SynIzh_ini, SynIzh_p, postSynV, postExpP); 
  //model.setSynapseG("Exc_Inh", gIzh1);
   synapsePSize.push_back(sizeof SynIzh_p);
   
   
-  model.addSynapsePopulation("Inh_Exc", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PInh", "PExc", SynIzh_p, postSynV, postExpP); 
+  model.addSynapsePopulation("Inh_Exc", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PInh", "PExc", SynIzh_ini, SynIzh_p, postSynV, postExpP); 
   //model.setSynapseG("Inh_Exc", gIzh1);
   synapsePSize.push_back(sizeof SynIzh_p);
   
   
-  model.addSynapsePopulation("Inh_Inh", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PInh", "PInh", SynIzh_p, postSynV, postExpP); 
+  model.addSynapsePopulation("Inh_Inh", NSYNAPSE, SPARSE, INDIVIDUALG, NO_DELAY, IZHIKEVICH_PS, "PInh", "PInh", SynIzh_ini, SynIzh_p, postSynV, postExpP); 
  //model.setSynapseG("Inh_Inh", gIzh1);
   synapsePSize.push_back(sizeof SynIzh_p);
   fprintf(stderr, "#model created.\n"); 

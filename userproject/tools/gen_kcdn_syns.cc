@@ -20,11 +20,13 @@ This file compiles to a tool to generate appropriate connectivity patterns betwe
 */ 
 //--------------------------------------------------------------------------
 
-using namespace std;
 
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+
+using namespace std;
+
 #include "randomGen.h"
 #include "gauss.h"
 
@@ -45,12 +47,12 @@ int main(int argc, char *argv[])
 
   int nMB= atoi(argv[1]);
   int nLB= atoi(argv[2]);
-  float pnkc_gsyn= atof(argv[3]);
-  float pnkc_jitter= atof(argv[4]);
-  float EPS= atof(argv[5]);
+  double pnkc_gsyn= atof(argv[3]);
+  double pnkc_jitter= atof(argv[4]);
+  double EPS= atof(argv[5]);
   ofstream os(argv[6],ios::binary);
-  float gsyn;
-  float *g= new float[nMB*nLB];
+  double gsyn;
+  double *g= new double[nMB*nLB];
 
   cerr << "# call was: ";
   for (int i= 0; i < argc; i++) cerr << argv[i] << " ";
@@ -63,7 +65,7 @@ int main(int argc, char *argv[])
       g[i*nLB+j]= gsyn;
     }
   }
-  os.write((char *)g, nMB*nLB*sizeof(float));
+  os.write((char *)g, nMB*nLB*sizeof(double));
   os.close();
   delete[] g;
  

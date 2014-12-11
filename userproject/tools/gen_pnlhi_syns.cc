@@ -20,11 +20,12 @@ This file compiles to a tool to generate appropriate connectivity patterns betwe
 */ 
 //--------------------------------------------------------------------------
 
-using namespace std;
 
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -39,10 +40,10 @@ int main(int argc, char *argv[])
 
   int nAL= atoi(argv[1]);
   int nLHI= atoi(argv[2]);
-  float PNLHI_theta= atof(argv[3]);
-  float PNLHI_minact= atof(argv[4]);
+  double PNLHI_theta= atof(argv[3]);
+  double PNLHI_minact= atof(argv[4]);
   ofstream os(argv[5], ios::binary);
-  float *g= new float[nAL*nLHI];
+  double *g= new double[nAL*nLHI];
 
   cerr << "# call was: ";
   for (int i= 0; i < argc; i++) cerr << argv[i] << " ";
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
     }
   }
   
-  os.write((char *)g, nAL*nLHI*sizeof(float));
+  os.write((char *)g, nAL*nLHI*sizeof(double));
   os.close();
   delete[] g;
   

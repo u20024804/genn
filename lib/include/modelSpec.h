@@ -31,12 +31,15 @@ void initGeNN();
 unsigned int GeNNReady= 0;
 
 //neuronType
-unsigned int MAPNEURON; //!< Macro attaching the name "MAPNEURON" to neuron type 0
-unsigned int POISSONNEURON; //!< Macro attaching the name "POISSONNEURON" to neuron type 1
-unsigned int TRAUBMILES; //!< Macro attaching the name "TRAUBMILES" to neuron type 2
-unsigned int IZHIKEVICH; //!< Macro attaching the name "IZHIKEVICH" to neuron type 3
-unsigned int IZHIKEVICH_V; //!< Macro attaching the name "IZHIKEVICH_V" to neuron type 4
-#define MAXNRN 5 // maximum number of neuron types: SpineML needs to know this
+unsigned int MAPNEURON; //!< variable attaching the name "MAPNEURON" 
+unsigned int POISSONNEURON; //!< variable attaching the name "POISSONNEURON" 
+unsigned int TRAUBMILES_FAST; //!< varianle attaching the name "TRAUBMILES_FAST" 
+unsigned int TRAUBMILES_ALTERNATIVE; //!< varianle attaching the name "TRAUBMILES_ALTERNATIVE" 
+unsigned int TRAUBMILES_SAFE; //!< varianle attaching the name "TRAUBMILES_SAFE" 
+unsigned int TRAUBMILES; //!< varianle attaching the name "TRAUBMILES" 
+unsigned int IZHIKEVICH; //!< variable attaching the name "IZHIKEVICH" 
+unsigned int IZHIKEVICH_V; //!< variable attaching the name "IZHIKEVICH_V" 
+#define MAXNRN 6 // maximum number of neuron types: SpineML needs to know this
 
 #define SYNTYPENO 4
 
@@ -95,7 +98,7 @@ unsigned int IZHIKEVICH_PS; //empty postsynaptic rule for the Izhikevich model.
 class dpclass {
 public:
   dpclass() {}  
-  virtual float calculateDerivedParameter(int index, vector < float > pars, float dt = 1.0) {return -1;}
+  virtual double calculateDerivedParameter(int index, vector < double > pars, double dt = 1.0) {return -1;}
 };
 
 
@@ -111,8 +114,8 @@ struct neuronModel
   vector<string> tmpVarNames; //!< never used
   vector<string> varTypes; //!< Types of the variable named above, e.g. "float". Names and types are matched by their order of occurrence in the vector.
   vector<string> tmpVarTypes; //!< never used
-  vector<string> pNames; //!< Names of (independent) parameters of the model. These are assumed to be always of type "float"
-  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "float"
+  vector<string> pNames; //!< Names of (independent) parameters of the model. These are assumed to be always of type "double"
+  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "double"
   			    
 The dependent parameters are functions of independent parameters that enter into the neuron model. To avoid unecessary computational overhead, these parameters are calculated at compile time and inserted as explicit values into the generated code. See method NNmodel::initDerivedNeuronPara for how this is done.*/ 
 
@@ -133,8 +136,8 @@ struct postSynModel
   string postSynDecay;
   vector<string> varNames; //!< Names of the variables in the postsynaptic model
   vector<string> varTypes; //!< Types of the variable named above, e.g. "float". Names and types are matched by their order of occurrence in the vector.
-  vector<string> pNames; //!< Names of (independent) parameters of the model. These are assumed to be always of type "float"
-  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "float"*/
+  vector<string> pNames; //!< Names of (independent) parameters of the model. These are assumed to be always of type "double"
+  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "double"*/
   dpclass *dps;
 };
 
@@ -151,8 +154,8 @@ public:
   string synapseDynamics;
   vector<string> varNames; // !< \brief Names of the variables in the postsynaptic model
   vector<string> varTypes; // !< \brief Types of the variable named above, e.g. "float". Names and types are matched by their order of occurrence in the vector.
-  vector<string> pNames; // !< \brief Names of (independent) parameters of the model. These are assumed to be always of type "float"
-  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "float"*/
+  vector<string> pNames; // !< \brief Names of (independent) parameters of the model. These are assumed to be always of type "double"
+  vector<string> dpNames; /*!< \brief Names of dependent parameters of the model. These are assumed to be always of type "double"*/
 
   vector<string> extraGlobalSynapseKernelParameters; //!< Additional parameter in the neuron kernel; it is translated to a population specific name but otherwise assumed to be one parameter per population rather than per synapse.
 
@@ -191,6 +194,7 @@ public:
   unsigned int needSt; //!< Whether last spike times are needed at all in this network model (related to STDP)
   unsigned int needSynapseDelay; //!< Whether delayed synapse conductance is required in the network
   int chooseGPUDevice;
+  bool timing;
   unsigned int seed;
   bool needSpkEvnt;
 
@@ -204,9 +208,9 @@ public:
   vector<unsigned int> padSumNeuronN; //!< Padded summed neuron numbers
   vector<unsigned int> neuronPostSyn; //! Postsynaptic methods to the neuron
   vector<unsigned int> neuronType; //!< Types of neurons
-  vector<vector<float> > neuronPara; //!< Parameters of neurons
-  vector<vector<float> > dnp; //!< Derived neuron parameters
-  vector<vector<float> > neuronIni; //!< Initial values of neurons
+  vector<vector<double> > neuronPara; //!< Parameters of neurons
+  vector<vector<double> > dnp; //!< Derived neuron parameters
+  vector<vector<double> > neuronIni; //!< Initial values of neurons
   vector<vector<unsigned int> > inSyn; //!< The ids of the incoming synapse groups
   vector<vector<unsigned int> > outSyn; //!< The ids of the outgoing synapse groups
   vector<unsigned int> receivesInputCurrent; //!< flags whether neurons of a population receive explicit input currents
@@ -216,6 +220,8 @@ public:
   vector<unsigned int> neuronDelaySlots; //!< The number of slots needed in the synapse delay queues of a neuron group
   vector<int> neuronHostID; //!< The ID of the cluster node which the neuron groups are computed on
   vector<int> neuronDeviceID; //!< The ID of the CUDA device which the neuron groups are comnputed on
+  vector<vector<bool > > neuronVarNeedSpkEvnt; //!< indicates whether spkEnt values (or delay queues) need to be stored for this variable
+  vector<vector<bool > > neuronVarNeedSpk; //!< indicates whether spk values (or delay queues) need to be stored for this variable
 
   // PUBLIC SYNAPSE VARIABLES
   //=========================
@@ -238,14 +244,14 @@ public:
   vector<unsigned int> usesSpikeEvents; //!< Defines if synapse update is done after detection of spike events (every point above threshold)
   vector<vector<string> > synapseSpkEvntVars; //!< Defines variable names that are needed in the SpkEvnt condition and that are pre-fetched for that purpose into shared memory
   vector<unsigned int> usesPostLearning; //!< Defines if anything is done in case of postsynaptic neuron spiking before presynaptic neuron (punishment in STDP etc.) 
-  vector<vector<float> > synapsePara; //!< parameters of synapses
-  vector<vector<float> > synapseIni; //!< Initial values of synapse variables
-  vector<vector<float> > dsp_w;  //!< Derived synapse parameters (weightUpdateModel only)
+  vector<vector<double> > synapsePara; //!< parameters of synapses
+  vector<vector<double> > synapseIni; //!< Initial values of synapse variables
+  vector<vector<double> > dsp_w;  //!< Derived synapse parameters (weightUpdateModel only)
   vector<unsigned int> postSynapseType; //!< Types of post-synaptic model
-  vector<vector<float> > postSynapsePara; //!< parameters of postsynapses
-  vector<vector<float> > postSynIni; //!< Initial values of postsynaptic variables
-  vector<vector<float> > dpsp;  //!< Derived postsynapse parameters
-  vector<float> globalInp; //!< Global explicit input if CONSTINP is chosen.
+  vector<vector<double> > postSynapsePara; //!< parameters of postsynapses
+  vector<vector<double> > postSynIni; //!< Initial values of postsynaptic variables
+  vector<vector<double> > dpsp;  //!< Derived postsynapse parameters
+  vector<double> globalInp; //!< Global explicit input if CONSTINP is chosen.
   unsigned int lrnGroups; //!< Number of synapse groups with learning
   vector<unsigned int> padSumLearnN; //!< Padded summed neuron numbers of learn group source populations
   vector<unsigned int> lrnSynGrp; //!< Enumeration of the IDs of synapse groups that learn
@@ -262,8 +268,8 @@ private:
   void setNeuronName(unsigned int, const string); //!< Never used
   void setNeuronN(unsigned int, unsigned int); //!< Never used
   void setNeuronType(unsigned int, unsigned int); //!< Never used
-  void setNeuronPara(unsigned int, float*); //!< Never used
-  void setNeuronIni(unsigned int, float*); //!< Never used
+  void setNeuronPara(unsigned int, double*); //!< Never used
+  void setNeuronIni(unsigned int, double*); //!< Never used
   unsigned int findNeuronGrp(const string); //!< Find the the ID number of a neuron group by its name 
   void initDerivedNeuronPara(unsigned int); //!< Method for calculating the values of derived neuron parameters.
   void initNeuronSpecs(unsigned int); //!< Method for calculating neuron IDs, taking into account the blocksize padding between neuron populations; also initializes nThresh and neuronNeedSt for a population of neurons.
@@ -276,7 +282,7 @@ private:
   void setSynapseType(unsigned int, unsigned int); //!< Never used
   void setSynapseSource(unsigned int, unsigned int); //!< Never used
   void setSynapseTarget(unsigned int, unsigned int); //!< Never used
-  void setSynapsePara(unsigned int, float*); //!< Never used
+  void setSynapsePara(unsigned int, double*); //!< Never used
   void setSynapseConnType(unsigned int, unsigned int); //!< Never used
   void setSynapseGType(unsigned int, unsigned int); //!< Never used
   unsigned int findSynapseGrp(const string); //< Find the the ID number of a synapse group by its name
@@ -295,6 +301,8 @@ public:
 
   void setPrecision(unsigned int);//!< Set numerical precision for floating point
 
+  void setTiming(bool); //!< Set whether timers and timing commands are to be included
+
   void setSeed(unsigned int); //!< Set the random seed (disables automatic seeding if argument not 0).
 
   void checkSizes(unsigned int *, unsigned int *, unsigned int *); //< Check if the sizes of the initialized neuron and synapse groups are correct.
@@ -306,15 +314,15 @@ public:
   // PUBLIC NEURON FUNCTIONS
   //========================
 
-  void addNeuronPopulation(const char *, unsigned int, unsigned int, float *, float *); //!< Method for adding a neuron population to a neuronal network model, using C style character array for the name of the population
+  void addNeuronPopulation(const char *, unsigned int, unsigned int, double *, double *); //!< Method for adding a neuron population to a neuronal network model, using C style character array for the name of the population
 
-  void addNeuronPopulation(const string, unsigned int, unsigned int, float *, float *); //!< Method for adding a neuron population to a neuronal network model, using C++ string for the name of the population
+  void addNeuronPopulation(const string, unsigned int, unsigned int, double *, double *); //!< Method for adding a neuron population to a neuronal network model, using C++ string for the name of the population
   //void activateDirectInput(const char *, unsigned int);  
   //void addPostSyntoNeuron(const string,unsigned int); //!< Method for defining postsynaptic dynamics
 
   void activateDirectInput(const string, unsigned int);  
 
-  void setConstInp(const string, float); //!< Method for setting the global input value for a neuron population if CONSTINP
+  void setConstInp(const string, double); //!< Method for setting the global input value for a neuron population if CONSTINP
 
   void setNeuronClusterIndex(const string neuronGroup, int hostID, int deviceID); //!< Function for setting which host and which device a neuron group will be simulated on
 
@@ -322,13 +330,13 @@ public:
   // PUBLIC SYNAPSE FUNCTIONS
   //=========================
 
-  void addSynapsePopulation(const string name, unsigned int syntype, unsigned int conntype, unsigned int gtype, const string src, const string trg, float *p); //!< Overload of method for backwards compatibility
+  void addSynapsePopulation(const string name, unsigned int syntype, unsigned int conntype, unsigned int gtype, const string src, const string trg, double *p); //!< Overload of method for backwards compatibility
 
-  void addSynapsePopulation(const char *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const char *, const char *, float *, float *, float *); //!< Method for adding a synapse population to a neuronal network model, using C style character array for the name of the population
-  void addSynapsePopulation(const string, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const string, const string, float *, float *, float *); //!< Overloaded version without initial variables for synapses
-  void addSynapsePopulation(const string, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const string, const string, float *,float *, float *, float *); //!< Method for adding a synapse population to a neuronal network model, using C++ string for the name of the population
+  void addSynapsePopulation(const char *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const char *, const char *, double *, double *, double *); //!< Method for adding a synapse population to a neuronal network model, using C style character array for the name of the population
+  void addSynapsePopulation(const string, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const string, const string, double *, double *, double *); //!< Overloaded version without initial variables for synapses
+  void addSynapsePopulation(const string, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const string, const string, double *,double *, double *, double *); //!< Method for adding a synapse population to a neuronal network model, using C++ string for the name of the population
 
-  void setSynapseG(const string, float); //!< Method for setting the conductance (g) value for a synapse population with "GLOBALG" charactertistic
+  void setSynapseG(const string, double); //!< Method for setting the conductance (g) value for a synapse population with "GLOBALG" charactertistic
   //void setSynapseNo(unsigned int,unsigned int); // !< Sets the number of connections for sparse matrices  
 
   void setMaxConn(const string, unsigned int); //< Set maximum connections per neuron for the given group (needed for optimization by sparse connectivity)

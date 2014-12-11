@@ -26,6 +26,7 @@ This file compiles to a tool that wraps all the other tools into one chain of ta
 #include <sstream>
 #include <cstdlib>
 #include <cmath>
+#include <locale>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -44,9 +45,28 @@ using namespace std;
 template<typename T> std::string toString(T t)
 {
   std::stringstream s;
+  s << std::showpoint;
   s << t;
   return s.str();
 } 
+
+#define tS(X) toString(X) //!< Macro providing the abbreviated syntax tS() instead of toString().
+
+string toUpper(string s)
+{
+    for (unsigned int i= 0; i < s.length(); i++) {
+	s[i]= toupper(s[i]);
+    }
+    return s;
+}
+
+string toLower(string s)
+{
+    for (unsigned int i= 0; i < s.length(); i++) {
+	s[i]= tolower(s[i]);
+    }
+    return s;
+}
 
 //--------------------------------------------------------------------------
 /*! \brief Main entry point for generate_run.
@@ -55,30 +75,32 @@ template<typename T> std::string toString(T t)
 
 int main(int argc, char *argv[])
 {
-  if (argc != 10)
+  if (!(argc == 11 || argc == 12))
   {
-    cerr << "usage: generate_run <CPU=0, AUTO GPU=1, GPU n= \"n+2\"> <nAL> <nMB> <nLHI> <nLb> <gscale> <outdir> <model name> <debug mode? (0/1)>" << endl;
+      cerr << "usage: generate_run <CPU=0, AUTO GPU=1, GPU n= \"n+2\"> <nAL> <nMB> <nLHI> <nLb> <gscale> <outdir> <model name> <debug mode? (0/1)> <ftype \"FLOAT\" or \"DOUBLE\"> <use previous connectivity?(optional atm) (0/1)>" << endl;
     exit(1);
   }
-
+  int retval;
   string cmd;
-  string gennPath = getenv("GENN_PATH");
-  string outdir = toString(argv[7]) + "_output";  
-  string modelName = argv[8];
-  int dbgMode = atoi(argv[9]); // set this to 1 if you want to enable gdb and cuda-gdb debugging to 0 for release
-
   int which = atoi(argv[1]);
   int nAL = atoi(argv[2]);
   int nMB = atoi(argv[3]);
   int nLHI = atoi(argv[4]);
   int nLB = atoi(argv[5]);
-  float gscale = atof(argv[6]);
+  double gscale = atof(argv[6]);
+  string gennPath = getenv("GENN_PATH");
+  string outdir = toString(argv[7]) + "_output";  
+  string modelName = argv[8];
+  int dbgMode = atoi(argv[9]); // set this to 1 if you want to enable gdb and cuda-gdb debugging to 0 for release
+  char *ftype= argv[10];
+  int fixsynapse = atoi(argv[11]); // if this is not 0 network generation is skipped
   
-  float pnkc_gsyn = 100.0f / nAL * gscale;
-  float pnkc_gsyn_sigma = 100.0f / nAL * gscale / 15.0f; 
-  float kcdn_gsyn = 2500.0f / nMB * 0.35f * gscale; 
-  float kcdn_gsyn_sigma = 2500.0f / nMB * 0.05f * gscale; 
-  float pnlhi_theta = 100.0f / nAL * 14.0f * gscale;
+  
+  double pnkc_gsyn = 100.0f / nAL * gscale;
+  double pnkc_gsyn_sigma = 100.0f / nAL * gscale / 15.0f; 
+  double kcdn_gsyn = 2500.0f / nMB * 0.1f * gscale; 
+  double kcdn_gsyn_sigma = 2500.0f / nMB * 0.01f * gscale; 
+  double pnlhi_theta = 100.0f / nAL * 14.0f * gscale;
 
   // write neuron population sizes
   string fname = gennPath + "/userproject/include/sizes.h";
@@ -87,6 +109,20 @@ int main(int argc, char *argv[])
   os << "#define _NMB " << nMB << endl;
   os << "#define _NLHI " << nLHI << endl;
   os << "#define _NLB " << nLB << endl;
+
+  string tmps= tS(ftype);
+  os << "#define _FTYPE " << toUpper(tmps) << endl;
+  os << "#define scalar " << toLower(tmps) << endl;
+  if (toLower(ftype) == "double") {
+      os << "#define SCALAR_MIN DBL_MIN" << endl;
+      os << "#define SCALAR_MAX DBL_MAX" << endl;
+  }
+  else {
+      os << "#define SCALAR_MIN FLT_MIN" << endl;
+      os << "#define SCALAR_MAX FLT_MAX" << endl;
+  } 
+
+
   os.close();
 
   // build it
@@ -98,13 +134,18 @@ int main(int argc, char *argv[])
   }
 #else // UNIX
   cmd = "cd model && buildmodel.sh " + modelName + " " + toString(dbgMode);
-  cmd += " && make clean && make";
+  cmd += " && make clean && make release";
   if (dbgMode == 1) {
     cmd += " debug";
   }
 #endif
-  system(cmd.c_str());
-
+  cerr << cmd << endl;
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
   // create output directory
 #ifdef _WIN32
   _mkdir(outdir.c_str());
@@ -114,6 +155,7 @@ int main(int argc, char *argv[])
   }
 #endif
   
+  if (fixsynapse == 0){
   // generate pnkc synapses
   cmd = gennPath + "/userproject/tools/gen_pnkc_syns ";
   cmd += toString(nAL) + " ";
@@ -123,8 +165,12 @@ int main(int argc, char *argv[])
   cmd += toString(pnkc_gsyn_sigma) + " ";
   cmd += outdir + "/" + toString(argv[7]) + ".pnkc";
   cmd += " 1> " + outdir + "/" + toString(argv[7]) + ".pnkc.msg 2>&1";
-  system(cmd.c_str()); 
-
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
   // generate kcdn synapses
   cmd = gennPath + "/userproject/tools/gen_kcdn_syns ";
   cmd += toString(nMB) + " ";
@@ -134,7 +180,12 @@ int main(int argc, char *argv[])
   cmd += toString(kcdn_gsyn_sigma) + " ";
   cmd += outdir + "/" + toString(argv[7]) + ".kcdn";
   cmd += " 1> " + outdir + "/" + toString(argv[7]) + ".kcdn.msg 2>&1";
-  system(cmd.c_str());
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
 
   // generate pnlhi synapses
   cmd = gennPath + "/userproject/tools/gen_pnlhi_syns ";
@@ -143,7 +194,12 @@ int main(int argc, char *argv[])
   cmd += toString(pnlhi_theta) + " 15 ";
   cmd += outdir + "/" + toString(argv[7]) + ".pnlhi";
   cmd += " 1> " + outdir + "/" + toString(argv[7]) + ".pnlhi.msg 2>&1";
-  system(cmd.c_str());
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
 
   // generate input patterns
   cmd = gennPath + "/userproject/tools/gen_input_structured ";
@@ -151,8 +207,17 @@ int main(int argc, char *argv[])
   cmd += "10 10 0.1 0.05 1.0 2e-04 ";
   cmd += outdir + "/" + toString(argv[7]) + ".inpat";
   cmd += " 1> " + outdir + "/" + toString(argv[7]) + ".inpat.msg 2>&1";
-  system(cmd.c_str());
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
 
+  }
+  else{
+    cout << "Skipping network generation...." << endl;
+  }
   // run it!
   cout << "running test..." << endl;
 #ifdef _WIN32
@@ -170,7 +235,12 @@ int main(int argc, char *argv[])
     cmd = "model/classol_sim " + toString(argv[7]) + " " + toString(which);
   }
 #endif
-  system(cmd.c_str());
+  retval=system(cmd.c_str());
+  if (retval != 0){
+    cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
+    cerr << "Exiting..." << endl;
+    exit(1);
+  }
 
   return 0;
 }

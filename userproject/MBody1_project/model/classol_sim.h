@@ -20,12 +20,16 @@
 
 using namespace std;
 #include <cassert>
-#include "hr_time.cpp"
 
+//#define TIMING
+
+#include "hr_time.cpp"
 #include "utils.h" // for CHECK_CUDA_ERRORS
 
 #include <cuda_runtime.h>
+//#include <cfloat>
 
+#include "MBody1.cc"
 
 #define MYRAND(Y,X) Y = Y * 1103515245 +12345; X= (Y >> 16);
 
@@ -35,14 +39,14 @@ using namespace std;
 #define DBG_SIZE 10000
 
 // and some global variables
-float t= 0.0f;
+scalar t= 0.0f;
 unsigned int iT= 0;
 
 #define PATTERNNO 100
-float InputBaseRate= 2e-04;
+scalar InputBaseRate= 2e-04;
 //----------------------------------------------------------------------
 // other stuff:
-#define T_REPORT_TME 1000.0
+#define T_REPORT_TME 10000.0
 #define SYN_OUT_TME 20000.0
 
 int patSetTime;
@@ -55,7 +59,7 @@ int patSetTime;
 int patFireTime;
 
 
-#define TOTAL_TME 30000.0
+#define TOTAL_TME 5000.0
 
 CStopWatch timer;
 
