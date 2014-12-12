@@ -156,7 +156,6 @@ make
 #echo "Moving binary data..."
 #fi
 #cd bin/darwin/release
-#fi
 ./sim
 #rm *.bin
 echo "Done"
