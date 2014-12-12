@@ -73,7 +73,7 @@ Error: Non-FixedValue Parameter or StateVariable value found - Only FixedValues 
 		
 		<!-- ### PARAMETERS ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT -->
-		<!---->float p__<xsl:value-of select="translate(SMLLOWNL:Neuron/@name,' -','SH')"/>[<xsl:value-of select="count(document(SMLLOWNL:Neuron/@url)//SMLCL:Parameter)"/>]={
+		<!---->double p__<xsl:value-of select="translate(SMLLOWNL:Neuron/@name,' -','SH')"/>[<xsl:value-of select="count(document(SMLLOWNL:Neuron/@url)//SMLCL:Parameter)"/>]={
 		<xsl:for-each select="document(SMLLOWNL:Neuron/@url)//SMLCL:Parameter"> <!-- ENTER CURRENT POPULATION COMPONENT PARAMETERS -->
 			<xsl:variable name="curr_par_name" select="@name"/>
 			<xsl:choose>
@@ -114,7 +114,7 @@ Error: Explicit list of parameter values for '<xsl:value-of select="$curr_par_na
 
 		<!-- ### STATE VARIABLES ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT -->
-		<!---->float ini__<xsl:value-of select="translate(SMLLOWNL:Neuron/@name,' -','SH')"/>[<!---->
+		<!---->double ini__<xsl:value-of select="translate(SMLLOWNL:Neuron/@name,' -','SH')"/>[<!---->
 			<xsl:if test="document(SMLLOWNL:Neuron/@url)/SMLCL:SpineML/SMLCL:ComponentClass[@name = 'GeNNNativeTraubMiles'] | document(SMLLOWNL:Neuron/@url)/SMLCL:SpineML/SMLCL:ComponentClass[@name = 'GeNNNativeIzhikevich'] | document(SMLLOWNL:Neuron/@url)/SMLCL:SpineML/SMLCL:ComponentClass[@name = 'GeNNNativeRulkov'] | document(SMLLOWNL:Neuron/@url)/SMLCL:SpineML/SMLCL:ComponentClass[@name = 'GeNNNativePoisson']">
 				<xsl:value-of select="count(document(SMLLOWNL:Neuron/@url)//SMLCL:StateVariable)"/>]={
 			</xsl:if>
@@ -180,7 +180,7 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 		
 		<!-- ### PARAMETERS FOR WU ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT FOR WU -->
-		<!---->float p__<xsl:value-of select="concat('WeightUpdate',position())"/>[<!-- EMPTY BRACKETS AS C++ DOES NOT REQUIRE A NUMBER -->]={
+		<!---->double p__<xsl:value-of select="concat('WeightUpdate',position())"/>[<!-- EMPTY BRACKETS AS C++ DOES NOT REQUIRE A NUMBER -->]={
 		<!-- IMPORTANT - - - - - - IN THE NEXT LINE WE EXCLUDE G FROM THE PARS - THIS WILL NEED UNDOING  -->
 		<xsl:for-each select="document(SMLLOWNL:WeightUpdate/@url)//SMLCL:Parameter"> <!-- ENTER CURRENT POPULATION COMPONENT PARAMETERS -->
 			<xsl:variable name="curr_par_name" select="@name"/>
@@ -222,7 +222,7 @@ Error: Explicit list of parameter values for '<xsl:value-of select="$curr_par_na
 
 		<!-- ### STATE VARIABLES FOR WU ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT -->
-		<!---->float ini__<xsl:value-of select="concat('WeightUpdate',position())"/>[<!-- EMPTY BRACKETS AS C++ DOES NOT REQUIRE A NUMBER -->]={
+		<!---->double ini__<xsl:value-of select="concat('WeightUpdate',position())"/>[<!-- EMPTY BRACKETS AS C++ DOES NOT REQUIRE A NUMBER -->]={
 		<xsl:for-each select="document(SMLLOWNL:WeightUpdate/@url)//SMLCL:StateVariable | document(SMLLOWNL:WeightUpdate/@url)//SMLCL:Parameter"> <!-- ENTER CURRENT POPULATION COMPONENT STATE VARIABLE -->
 				<xsl:message terminate="no">
 Warning: State variable in Synapses are not currently supported by GeNN
@@ -272,7 +272,7 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 
 		<!-- ### PARAMETERS FOR POSTSYNAPSE ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT FOR POSTSYNAPSE -->
-		<!---->float p__<xsl:value-of select="concat('PostSynapse',position())"/>[<xsl:value-of select="count(document(./SMLLOWNL:PostSynapse/@url)//SMLCL:Parameter)"/>]={
+		<!---->double p__<xsl:value-of select="concat('PostSynapse',position())"/>[<xsl:value-of select="count(document(./SMLLOWNL:PostSynapse/@url)//SMLCL:Parameter)"/>]={
 		<!-- IMPORTANT - - - - - - IN THE NEXT LINE WE EXCLUDE G FROM THE PARS - THIS WILL NEED UNDOING  -->
 		<xsl:for-each select="document(SMLLOWNL:PostSynapse/@url)//SMLCL:Parameter"> <!-- ENTER CURRENT POPULATION COMPONENT PARAMETERS -->
 			<xsl:variable name="curr_par_name" select="@name"/>
@@ -314,7 +314,7 @@ Error: Explicit list of parameter values for '<xsl:value-of select="$curr_par_na
 
 		<!-- ### STATE VARIABLES FOR POSTSYNAPSE ### -->
 		<!-- ADD ARRAY WITH NAME AND SIZE DERIVED FROM COMPONENT -->
-		<!---->float ini__<xsl:value-of select="concat('PostSynapse',position())"/>[<xsl:value-of select="count(document(./SMLLOWNL:PostSynapse/@url)//SMLCL:StateVariable)"/>]={
+		<!---->double ini__<xsl:value-of select="concat('PostSynapse',position())"/>[<xsl:value-of select="count(document(./SMLLOWNL:PostSynapse/@url)//SMLCL:StateVariable)"/>]={
 		<xsl:for-each select="document(SMLLOWNL:PostSynapse/@url)//SMLCL:StateVariable"> <!-- ENTER CURRENT POPULATION COMPONENT STATE VARIABLE -->
 				<xsl:message terminate="no">
 Warning: State variable in Synapses are not currently supported by GeNN
@@ -362,7 +362,12 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 	<!-- WRITE OUT THE MODEL SETUP FUNCTION -->
 	<!---->void modelDefinition(NNmodel &amp;model) 
 <!---->{
-	initGeNN();
+	GeNNReady = 1;	
+	#include "extra_neurons.h"
+	#include "extra_postsynapses.h"
+	#include "extra_weightupdates.h"
+	POISSONNEURON = INT_MAX;
+		
 <!---->	model.setGPUDevice(0); 
 <!---->	model.setName("<xsl:value-of select="translate(/SMLLOWNL:SpineML/@name,' ','_')"/>");<!---->
 	<!-- ADD POPULATIONS -->
@@ -380,6 +385,9 @@ Error: Explicit list of state variable values used for '<xsl:value-of select="$c
 	model.addSynapsePopulation("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
 		<xsl:call-template name="get_synapse_type"/>, <!---->
 		<xsl:choose>
+			<xsl:when test="SMLNL:OneToOneConnection">
+				<!---->SPARSE, <!-- HANDLED MANUALLY -->
+			</xsl:when>
 			<xsl:when test="SMLNL:AllToAllConnection">
 				<!---->ALLTOALL, <!-- HANDLED NATIVELY -->
 			</xsl:when>
@@ -404,7 +412,7 @@ Error: A WeightUpdate component is lacking a value 'g', which is required for Ge
 			</xsl:message>
 		</xsl:if-->
 		<!-- Since custom weight updates have been introduced we now always use GLOBAL G as we handle our own G values -->
-		<!---->GLOBALG, <!---->
+		<!---->INDIVIDUALG, <!---->
 		<!-- NOW HANDLE THE GLOBAL DELAY - FOR NOW WE'LL HARD CODE IT BUT SHOULD DETECT AND FILL THIS IN -->
 		<!---->NO_DELAY, <!---->
 		<!-- POSTSYNAPSE TYPE -->
@@ -423,12 +431,12 @@ Error: A WeightUpdate component is lacking a value 'g', which is required for Ge
 		<!---->);<!---->
 		<!-- ADD GLOBAL G VALUES -->
 		<xsl:if test="SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue">
-	model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
+	//model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
 <!---->	<xsl:value-of select="SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue/@value"/>);<!---->
 		</xsl:if>
 		<!-- We always have a global 'g', just sometimes we do not use it -->
 		<xsl:if test="not(SMLLOWNL:WeightUpdate/SMLNL:Property[@name='g']/SMLNL:FixedValue)">
-	model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
+	//model.setSynapseG("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>",<!---->
 <!---->	0);<!---->
 		</xsl:if>
 		<!-- For sparse connectivity we need to set the maximum number of connections... -->
@@ -437,6 +445,9 @@ Error: A WeightUpdate component is lacking a value 'g', which is required for Ge
 		<xsl:if test="count(SMLNL:AllToAllConnection | SMLNL:OneToOneConnectivity) = 0">
 			<xsl:if test="not(number(SMLNL:FixedProbabilityConnection/@probability)>number(0.1) or (count(.//SMLNL:Connection) div number($maxConnSize))>number(0.1) or (number(.//@num_connections) div number($maxConnSize))>number(0.1))">
 		model.setMaxConn("<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>", <!---->
+		<xsl:if test="SMLNL:OneToOneConnection">
+			<xsl:value-of select="../../SMLLOWNL:Neuron/@size"/><!-- size of src nrn -->
+		</xsl:if>
 		<xsl:if test="SMLNL:FixedProbabilityConnection">
 			<xsl:value-of select="number(.//@probability) * number($maxConnSize) * number(2.5)"/><!-- 2.5 is pretty safe I've found -->
 		</xsl:if>
@@ -515,7 +526,7 @@ Error: High level schema support not currently implemented for GeNN
 	<xsl:param name="curr_component"/>
 	<xsl:for-each select="//SMLLOWNL:Neuron[not(document(@url)//SMLCL:ComponentClass/@name='GeNNNativeTraubMiles' or document(@url)//SMLCL:ComponentClass/@name='GeNNNativeIzhikevich' or document(@url)//SMLCL:ComponentClass/@name='GeNNNativeRulkov' or document(@url)//SMLCL:ComponentClass/@name='GeNNNativePoisson')]">
 		<xsl:if test="generate-id(.) = generate-id($curr_component)">
-			<!---->MAXNRN+<xsl:value-of select="position()+$number"/>
+			<!---->0+<xsl:value-of select="position()+$number"/>
 		</xsl:if>
 	</xsl:for-each>
 </xsl:template>
@@ -555,7 +566,7 @@ Error: High level schema support not currently implemented for GeNN
 	<xsl:variable name="curr_nrn" select="$neurons[1]"/>
 	<xsl:for-each select="//SMLLOWNL:PostSynapse[../../@dst_population=$curr_nrn/@name and not(document(@url)//SMLCL:ComponentClass/@name='GeNNNativePostSynapse')]">
 		<xsl:if test="generate-id(.) = generate-id($curr_component)">
-			<!---->MAXPOSTSYN+<xsl:value-of select="position()+$number"/>
+			<!---->0+<xsl:value-of select="position()+$number"/>
 		</xsl:if>			
 	</xsl:for-each>
 	<xsl:if test="not(count($neurons)=0)">
@@ -608,7 +619,7 @@ Error: High level schema support not currently implemented for GeNN
 	<xsl:variable name="curr_nrn" select="$neurons[1]"/>
 	<xsl:for-each select="//SMLLOWNL:WeightUpdate[../../@dst_population=$curr_nrn/@name and not(document(@url)//SMLCL:ComponentClass/@name='GeNNNativeGradedSynapse' or document(@url)//SMLCL:ComponentClass/@name='GeNNNativeLearningSynapse' or document(@url)//SMLCL:ComponentClass/@name='GeNNNativeSynapse')]">
 		<xsl:if test="generate-id(.) = generate-id($curr_component)">
-			<!---->MAXSYN+<xsl:value-of select="position()+$number"/>
+			<!---->0+<xsl:value-of select="position()+$number"/>
 		</xsl:if>			
 	</xsl:for-each>
 	<xsl:if test="not(count($neurons)=0)">

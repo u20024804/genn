@@ -11,6 +11,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:SMLLOWNL="http://www.shef
 <xsl:variable name="model_xml" select="//SMLEX:Model/@network_layer_url"/>
 <xsl:for-each select="document($model_xml)"> <!-- GET INTO NETWORK FILE -->
 
+	postSynModel ps;
+
 <xsl:choose> <!-- CHOOSE SCHEMA -->
 
 <!-- LOW LEVEL SCHEMA -->
@@ -78,10 +80,14 @@ Error: Connections to PostSynapses from sources other than the destination Neuro
      </xsl:for-each>
      <xsl:for-each select="//SMLCL:AnalogReducePort">
      	<xsl:variable name="curr_port_name" select="@name"/>
+     	 <!-- PROJECTION ANALOG CONNECTIONS -->
+     	 <xsl:if test="$curr_ps/@input_dst_port=$curr_port_name">
+     		<!---->	float <xsl:value-of select="@name"/>_PS = $(inSyn); \n \
+     	</xsl:if>
      	<xsl:if test="$curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src=$curr_ps/../../@dst_population">
      		<!---->	float <xsl:value-of select="@name"/>_PS = <xsl:for-each select="$curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]">l<xsl:value-of select="@src_port"/>_NB <xsl:if test="not(position() = count($curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]))"> + </xsl:if></xsl:for-each>; \n \
      	</xsl:if>
-     	\\<xsl:value-of select="$curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src"/>\\
+<!--		//<xsl:value-of select="$curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src"/>\\ -->
      	<xsl:if test="not($curr_ps/SMLLOWNL:Input[@dst_port=$curr_port_name]/@src=$curr_ps/../../@dst_population)">
      		<!-- MUCH MORE COMPLICATED - LEAVING FOR NOW! -->
      		<xsl:message terminate="no">
@@ -245,7 +251,7 @@ Error: Connections to PostSynapses from sources other than the destination Neuro
 				<xsl:call-template name="add_indices_helper">
 					<xsl:with-param name="params" select="$params"/>
 					<xsl:with-param name="param" select="$param"/>
-					<xsl:with-param name="start" select="concat($startTemp,'$(',$param/@name,'_PS)')"/>
+					<xsl:with-param name="start" select="concat($startTemp,'($(',$param/@name,'_PS))')"/>
 					<xsl:with-param name="end" select="$endTemp"/>
 				</xsl:call-template>
 				</xsl:otherwise>

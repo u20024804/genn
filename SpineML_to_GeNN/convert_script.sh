@@ -4,6 +4,46 @@
 # ALEX COPE - 2013-2014
 # UNIVERSITY OF SHEFFIELD
 
+function usage () {
+   cat <<EOF
+
+usage: $0 [options]
+
+convert_script_s2g is used to process a SpineML model for GeNN
+
+Options are:
+
+  -w dirpath   Set the working directory - GENN_PATH. If not set defaults
+  						 to GENN_PATH sys variable.
+
+  -m modeldir  Set the model directory - the location of the experiment xml
+               files.
+               This is copied into the output directory and "preflighted" by
+               spineml_preflight before the simulation starts.
+
+  -o outdir    Set the output directory for temporary files and data output.
+
+  -e expt      Choose the experiment to run. Each model may have several
+               experiments, numbers 0, 1, 2, etc. Here, you can pass the number
+               of the experiment to run. E.g. -e 0. Defaults to 0.
+
+  -p "option"  Property change option. This modifies the experiment.xml file to
+               add a change to a parameter or the initial value of a state
+               variable. The population or projection name must be given, along
+               with the parameter/variable property name and the new value.
+               These three elements are separated with the colon character. The
+               new value can have its dimensions given after the value.
+
+               E.g.: -p "Striatum_D1:tau:45ms" - change param "tau" to 45 ms
+               for the population "Striatum_D1".
+
+               Multiple instances of this option may be given. The content of
+               each option is passed unmodified to spineml_preflight.
+
+EOF
+   exit 0
+}
+
 #exit on first error
 set -e
 
@@ -20,21 +60,9 @@ e)  EXPERIMENT_NAME="experiment$OPTARG.xml"
 ;;
 w)  GENN_2_BRAHMS_DIR="$OPTARG"
 ;;
-s)  REBUILD_SYSTEMML="false"
-;;
-r)  REBUILD_COMPONENTS="true"
-;;
 m)  MODEL_DIR="$OPTARG"
 ;;
 o)  OUTPUT_DIR="$OPTARG"
-;;
-n)  NODES="$OPTARG"
-;;
-a)  NODEARCH="$OPTARG"
-;;
-v)  VERBOSE_BRAHMS="--d"
-;;
-V)  VERBOSE_BRAHMS="--dd"
 ;;
 \?) usage
 ;;
@@ -47,7 +75,7 @@ mkdir -p $OUTPUT_DIR/model/
 cp $MODEL_DIR/* $OUTPUT_DIR/model/
 MODEL_DIR=$OUTPUT_DIR/model/
 
-LOG_DIR=$OUTPUT_DIR/temp
+LOG_DIR=$OUTPUT_DIR/log
 mkdir -p $LOG_DIR
 
 # What OS are we?
@@ -95,19 +123,16 @@ if [[ -z ${GENN_PATH+x} ]]; then
 error_exit "The system environment is not correctly configured"
 fi
 
-# make athe dir for the logs
-mkdir -p temp
-
 #check the directory is there
 mkdir -p $GENN_PATH/userproject/model_project
-cp extra_neurons.h $GENN_PATH/lib/include/
-cp extra_postsynapses.h $GENN_PATH/lib/include/
-cp extra_weightupdates.h $GENN_PATH/lib/include/
+cp extra_neurons.h $GENN_PATH/userproject/model_project/
+cp extra_postsynapses.h $GENN_PATH/userproject/model_project/
+cp extra_weightupdates.h $GENN_PATH/userproject/model_project/
 cp rng.h $GENN_PATH/userproject/model_project/
 cp Makefile $GENN_PATH/userproject/model_project/
 cp model.cc $GENN_PATH/userproject/model_project/model.cc
 cp sim.cu $GENN_PATH/userproject/model_project/sim.cu
-if cp model/*.bin $GENN_PATH/userproject/model_project/; then
+if cp $MODEL_DIR/*.bin $GENN_PATH/userproject/model_project/; then
 	echo "Copying binary data..."	
 fi
 

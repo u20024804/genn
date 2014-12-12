@@ -142,7 +142,8 @@ printf("Size checks successful\n");
 			<!-- fill in the array from the file, or XSLT -->
 			<xsl:if test="SMLNL:ConnectionList/SMLNL:BinaryFile">
 				<!-- binary file time - let's go! -->					
-<!---->			<!---->	g<xsl:value-of select="$varName"/>.connN = <xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>;				
+<!---->			<!---->	{unsigned int connN = <xsl:value-of select="SMLNL:ConnectionList/SMLNL:BinaryFile/@num_connections"/>;				
+<!---->			<!----> allocate<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>(connN);}
 			</xsl:if>
 			<xsl:if test="count(SMLNL:ConnectionList/SMLNL:Connection) > 0">
 				<xsl:variable name="curr_prop" select="."/>
@@ -152,7 +153,8 @@ printf("Size checks successful\n");
 Warning: Large connection list detected, code generation will be inefficient - consider using the BinaryFile tag
 					</xsl:message>
 				</xsl:if>
-<!---->			<!---->	g<xsl:value-of select="$varName"/>.connN = <xsl:value-of select="count(SMLNL:ConnectionList/SMLNL:Connection)"/>;				
+<!---->			<!---->	{unsigned int connN = <xsl:value-of select="count(SMLNL:ConnectionList/SMLNL:Connection)"/>;				
+<!---->			<!----> allocate<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>(connN);}	
 			</xsl:if>	
 		</xsl:when>
 		<xsl:when test="SMLNL:FixedProbabilityConnection">
@@ -170,11 +172,15 @@ Warning: Large connection list detected, code generation will be inefficient - c
 					}
 				}			
 			}
-<!---->		<!---->	g<xsl:value-of select="$varName"/>.connN = tempConns<xsl:value-of select="$varName"/>.size();				
+<!---->		<!----> {unsigned int connN = tempConns<xsl:value-of select="$varName"/>.size();				
+<!---->		<!----> allocate<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>(connN);	}
 		</xsl:when>
 		<xsl:when test="SMLNL:AllToAllConnection">
 		</xsl:when>
 		<xsl:when test="SMLNL:OneToOneConnection">
+			<!-- FOR NOW WE USE A SPARSE ARRAY -->
+<!---->		<!----> {unsigned int connN = <xsl:value-of select="../../SMLLOWNL:Neuron/@size"/>;				
+<!---->		<!----> allocate<xsl:value-of select="concat('Synapse',position())"/>_<xsl:value-of select="translate(../../SMLLOWNL:Neuron/@name,' -','SH')"/>_to_<xsl:value-of select="translate(../@dst_population,' -','SH')"/>(connN);}		
 		</xsl:when>		
 		<xsl:otherwise>
 			<xsl:message terminate="yes">
@@ -184,8 +190,6 @@ Error: Unrecognised connection type
 	</xsl:choose>
 	</xsl:if>
 </xsl:for-each>  
-  
-  allocateAllSparseArrays();
   
 // GENERATE CONNECTIVITY
 <xsl:for-each select="//SMLLOWNL:Synapse">
@@ -204,17 +208,11 @@ Error: Unrecognised connection type
 Error: One to one connection has different source and destination population sizes
 				</xsl:message>
 			</xsl:if>
-			<xsl:message terminate="yes">
-Error: This should be a native type - so I'm not implementing it for now
-			</xsl:message>
-			<!-- zero memory -->
-			<!---->	memset(<xsl:value-of select="$synapse_array_name"/>,<!---->
-			<!---->0,<!---->
-			<xsl:value-of select="concat('sizeof(float)*',$src_size,'*',$dst_size)"/>);
-<!---->		<!-- write diagonal -->
-			<!---->	for (int i = 0; i &lt; <xsl:value-of select="$src_size"/>; ++i) {
-<!---->		<!----><xsl:text>		</xsl:text><xsl:value-of select="$synapse_array_name"/>[i*<xsl:value-of select="$src_size"/>+i] = <!-- G value goes here... -->1;
-<!---->		<!---->	}
+			<!-- WRITE A SPARSE 1-2-1 ARRAY -->
+<!---->	for (int i = 0; i &lt; <xsl:value-of select="../../SMLLOWNL:Neuron/@size"/>; ++i) {
+<!---->		C<xsl:value-of select="$varName"/>.ind[i] = i;		
+<!---->		C<xsl:value-of select="$varName"/>.indInG[i] = 1;		
+<!---->	}
 		</xsl:when>
 		<xsl:when test="SMLNL:AllToAllConnection">
 			<xsl:for-each select="SMLLOWNL:WeightUpdate/SMLNL:Property">
@@ -314,34 +312,34 @@ Error: Explicit delays used - these are not yet supported so won't affect anythi
 				<!---->	//sort the connections
 <!---->			<!---->	std::sort(tempConns<xsl:value-of select="$varName"/>.begin(), tempConns<xsl:value-of select="$varName"/>.end(), sortConn);		
 <!---->			<!---->	// now we have the sorted connections we can create the sparse array
-<!---->			<!---->	//memset(g<xsl:value-of select="$varName"/>.gp, 0, sizeof(float)*tempConns<xsl:value-of select="$varName"/>.size());
-<!---->			<!---->	memset(g<xsl:value-of select="$varName"/>.gIndInG, 0, sizeof(unsigned int)*<xsl:value-of select="$src_size"/>);
-<!---->			<!---->	memset(g<xsl:value-of select="$varName"/>.gInd, 0, sizeof(unsigned int)*tempConns<xsl:value-of select="$varName"/>.size());
+<!---->			<!---->	//memset(C<xsl:value-of select="$varName"/>.gp, 0, sizeof(float)*tempConns<xsl:value-of select="$varName"/>.size());
+<!---->			<!---->	memset(C<xsl:value-of select="$varName"/>.indInG, 0, sizeof(unsigned int)*<xsl:value-of select="$src_size"/>);
+<!---->			<!---->	memset(C<xsl:value-of select="$varName"/>.ind, 0, sizeof(unsigned int)*tempConns<xsl:value-of select="$varName"/>.size());
 <!---->			<!---->	{int currentSrcIndex = 0;
-<!---->			<!---->	g<xsl:value-of select="$varName"/>.gIndInG[0] = 0; // always
+<!---->			<!---->	C<xsl:value-of select="$varName"/>.indInG[0] = 0; // always
 <!---->			<!---->	for (int ind = 0; ind &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++ind) {
 <!---->			<!---->		// we need to place the index of the first element in the list of dst indices
 <!---->			<!---->		// associated with each src index in this array - so we put in indices until we 
 <!---->			<!---->		// are on the current one, when we no longer are then we log that index and move on
 <!---->			<!---->		while (currentSrcIndex &lt; tempConns<xsl:value-of select="$varName"/>[ind].src) {
-<!---->			<!---->			g<xsl:value-of select="$varName"/>.gIndInG[currentSrcIndex+1] = ind;
+<!---->			<!---->			C<xsl:value-of select="$varName"/>.indInG[currentSrcIndex+1] = ind;
 <!---->			<!---->			++currentSrcIndex;
 <!---->			<!---->		}
 <!---->			<!---->		// now log the dst index
-<!---->			<!---->		g<xsl:value-of select="$varName"/>.gInd[ind] = tempConns<xsl:value-of select="$varName"/>[ind].dst;
+<!---->			<!---->		C<xsl:value-of select="$varName"/>.ind[ind] = tempConns<xsl:value-of select="$varName"/>[ind].dst;
 <!---->			<!---->	}
 <!---->			<!---->	// fill in the last running index
-<!---->			<!---->	g<xsl:value-of select="$varName"/>.gIndInG[currentSrcIndex+1] = tempConns<xsl:value-of select="$varName"/>.size();
+<!---->			<!---->	C<xsl:value-of select="$varName"/>.indInG[currentSrcIndex+1] = tempConns<xsl:value-of select="$varName"/>.size();
 <!---->			<!---->	// fill in the remaining indices...
 <!---->			<!---->	for (int ind = currentSrcIndex+2; ind &lt; <xsl:value-of select="$src_size"/>+1; ++ind) {
-<!---->			<!---->		g<xsl:value-of select="$varName"/>.gIndInG[ind] = tempConns<xsl:value-of select="$varName"/>.size();
+<!---->			<!---->		C<xsl:value-of select="$varName"/>.indInG[ind] = tempConns<xsl:value-of select="$varName"/>.size();
 <!---->			<!---->	}
 <!---->			<!---->	}
 /*for (int i = 0; i &lt; <xsl:value-of select="$src_size"/>+1; ++i) {
-cout &lt;&lt; g<xsl:value-of select="$varName"/>.gIndInG[i] &lt;&lt; " IndSrc" &lt;&lt; endl;
+cout &lt;&lt; <xsl:value-of select="$varName"/>.indInG[i] &lt;&lt; " IndSrc" &lt;&lt; endl;
 }
 for (int i = 0; i &lt; tempConns<xsl:value-of select="$varName"/>.size(); ++i) {
-cout &lt;&lt; g<xsl:value-of select="$varName"/>.gInd[i] &lt;&lt; " IndDst" &lt;&lt; endl;
+cout &lt;&lt; <xsl:value-of select="$varName"/>.ind[i] &lt;&lt; " IndDst" &lt;&lt; endl;
 }*/
 			</xsl:if>
 			<xsl:variable name="syn" select="."/>
@@ -546,10 +544,9 @@ Error: Native Poisson parameter 'therate' not found or undefined
     //theRates= baserates;
   }
   if (which == GPU) {
-    copyGToDevice(); 
     copyStateToDevice();
     //theRates= d_baserates;
-  }         // this includes copying g's for the GPU version
+  }
 
   fprintf(stderr, "# neuronal circuitry built, start computation ... \n\n");
 
