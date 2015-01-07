@@ -335,7 +335,7 @@ void modelDefinition(NNmodel &model)
   learn1synapse.needPostSt= TRUE;
   weightUpdateModels.push_back(learn1synapse);
   unsigned int LEARN1SYNAPSE_userdef=weightUpdateModels.size()-1; //this is the synapse index to be used in addSynapsePopulation
-
+  model.setGPUDevice(0); //force using device 0 for benchmarking 
   model.setName("MBody_userdef");
   model.addNeuronPopulation("PN", _NAL, POISSONNEURON, myPOI_p, myPOI_ini);
   model.addNeuronPopulation("KC", _NMB, TRAUBMILES_FAST, stdTM_p, stdTM_ini);
