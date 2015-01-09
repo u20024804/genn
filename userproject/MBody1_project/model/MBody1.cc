@@ -18,7 +18,7 @@
 */
 //--------------------------------------------------------------------------
 
-#define DT 0.1  //!< This defines the global time step at which the simulation will run
+#define DT 0.2  //!< This defines the global time step at which the simulation will run
 #include "modelSpec.h"
 #include "modelSpec.cc"
 #include "sizes.h"
@@ -38,14 +38,15 @@ double myPOI_ini[3]= {
   -10.0        // 2 - SpikeTime
 };
 
-double stdTM_p[7]= {
+double stdTM_p[8]= {
   7.15,          // 0 - gNa: Na conductance in 1/(mOhms * cm^2)
   50.0,          // 1 - ENa: Na equi potential in mV
   1.43,          // 2 - gK: K conductance in 1/(mOhms * cm^2)
   -95.0,         // 3 - EK: K equi potential in mV
   0.02672,       // 4 - gl: leak conductance in 1/(mOhms * cm^2)
   -63.563,       // 5 - El: leak equi potential in mV
-  0.143          // 6 - Cmem: membr. capacity density in muF/cm^2
+  0.143,          // 6 - Cmem: membr. capacity density in muF/cm^2
+  5              // 7 - ntimes: number of inner iterations for better precision
 };
 
 
@@ -147,9 +148,9 @@ void modelDefinition(NNmodel &model)
     model.setGPUDevice(0); //force using device 0 for benchmarking  
     model.setName("MBody1");
     model.addNeuronPopulation("PN", _NAL, POISSONNEURON, myPOI_p, myPOI_ini);
-    model.addNeuronPopulation("KC", _NMB, TRAUBMILES_FAST, stdTM_p, stdTM_ini);
-    model.addNeuronPopulation("LHI", _NLHI, TRAUBMILES_FAST, stdTM_p, stdTM_ini);
-    model.addNeuronPopulation("DN", _NLB, TRAUBMILES_FAST, stdTM_p, stdTM_ini);
+    model.addNeuronPopulation("KC", _NMB, TRAUBMILES_PSTEP, stdTM_p, stdTM_ini);
+    model.addNeuronPopulation("LHI", _NLHI, TRAUBMILES_PSTEP, stdTM_p, stdTM_ini);
+    model.addNeuronPopulation("DN", _NLB, TRAUBMILES_PSTEP, stdTM_p, stdTM_ini);
     
     model.addSynapsePopulation("PNKC", NSYNAPSE, DENSE, INDIVIDUALG, NO_DELAY, EXPDECAY, "PN", "KC", myPNKC_ini, myPNKC_p, postSynV,postExpPNKC);
     model.addSynapsePopulation("PNLHI", NSYNAPSE, ALLTOALL, INDIVIDUALG, NO_DELAY, EXPDECAY, "PN", "LHI",  myPNLHI_ini, myPNLHI_p, postSynV, postExpPNLHI);
