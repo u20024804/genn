@@ -33,7 +33,7 @@
 #endif
 
 // switch this on to debug problems in the Blocksize logic
-//#define BLOCKSZ_DEBUG
+#define BLOCKSZ_DEBUG
 
 /*! \brief This function will call the necessary sub-functions to generate the code for simulating a model. */
 
@@ -101,7 +101,6 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
     int **smallModel= new int*[3];
     int **deviceOccupancy= new int*[3];
     vector<unsigned int> *groupSize= new vector<unsigned int>[3];
-    int bestDeviceOccupancy = 0;
     float blockLimit, mainBlockLimit;
 
     int devstart, devcount;
@@ -119,7 +118,7 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
       bestBlkSz[kernel]= new unsigned int[deviceCount];
       smallModel[kernel]= new int[deviceCount];
       deviceOccupancy[kernel]= new int[deviceCount];
-      for (int device = devstart; device < devcount; device++) {
+      for (int device = 0; device < deviceCount; device++) { // initialise all whether used or not
 	bestBlkSz[kernel][device]= 0;
 	smallModel[kernel][device]= 0;
 	deviceOccupancy[kernel][device]= 0;
@@ -140,7 +139,18 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
       }
     }
     groupSize[2]= model->neuronN;
-    for (int device = devstart; device < devcount; device++) {
+ 
+#ifdef BLOCKSZ_DEBUG
+    for (int i= 0; i < 3; i++) {
+	mos << "BLOCKSZ_DEBUG: "; 
+	for (int j= 0; j < groupSize[i].size(); j++) {
+	    mos << "groupSize[" << i << "][" << j << "]=" << groupSize[i][j] << "; ";
+	}
+	mos << endl;
+    }
+#endif
+
+   for (int device = devstart; device < devcount; device++) {
       theDev = device;
       CHECK_CUDA_ERRORS(cudaSetDevice(device));
       CHECK_CUDA_ERRORS(cudaGetDeviceProperties(&(deviceProp[device]), device));      
@@ -198,6 +208,13 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	exit(EXIT_FAILURE);
       }
 
+#ifdef BLOCKSZ_DEBUG
+      mos << "BLOCKSZ_DEBUG: smemAllocGran= " <<  smemAllocGran << endl;
+      mos << "BLOCKSZ_DEBUG: warpAllocGran= " <<  warpAllocGran << endl;
+      mos << "BLOCKSZ_DEBUG: regAllocGran= " <<  regAllocGran << endl;
+      mos << "BLOCKSZ_DEBUG: maxBlocksPerSM= " <<  maxBlocksPerSM << endl;
+#endif
+
       // Read pipe until reg / smem usage is found, then calculate optimum block size for each kernel.
       int kernel= 0;
       while (fgets(buffer, 1024, nvccPipe) != NULL) {
@@ -230,16 +247,18 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	  for (int blkSz = 1, mx= deviceProp[device].maxThreadsPerBlock / warpSize; blkSz <= mx; blkSz++) {
 
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Candidate block size: " << blkSz*warpSize << endl;
+	    mos << "BLOCKSZ_DEBUG: Candidate block size: " << blkSz*warpSize << endl;
 #endif
 	    // BLOCK LIMIT DUE TO THREADS
 	    blockLimit = floor((float) deviceProp[device].maxThreadsPerMultiProcessor/warpSize/blkSz);
+
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Block limit due to maxThreadsPerMultiProcessor: " << blockLimit << endl;
+	    mos << "BLOCKSZ_DEBUG: Block limit due to maxThreadsPerMultiProcessor: " << blockLimit << endl;
 #endif
 	    if (blockLimit > maxBlocksPerSM) blockLimit = maxBlocksPerSM;
+
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Block limit corrected for maxBlocksPerSM: " << blockLimit << endl;
+	    mos << "BLOCKSZ_DEBUG: Block limit corrected for maxBlocksPerSM: " << blockLimit << endl;
 #endif
 	    mainBlockLimit = blockLimit;
 
@@ -254,17 +273,21 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	      blockLimit = floor(deviceProp[device].regsPerBlock/blockLimit/warpAllocGran)*warpAllocGran;
 	      blockLimit = floor(blockLimit/blkSz);
 	    }
+
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Block limit due to registers (device major " << deviceProp[device].major << "): " << blockLimit << endl;
+	    mos << "BLOCKSZ_DEBUG: Block limit due to registers (device major " << deviceProp[device].major << "): " << blockLimit << endl;
 #endif
+
 	    if (blockLimit < mainBlockLimit) mainBlockLimit= blockLimit;
 
 	    // BLOCK LIMIT DUE TO SHARED MEMORY
 	    blockLimit = ceil(reqSmem/smemAllocGran)*smemAllocGran;
 	    blockLimit = floor(deviceProp[device].sharedMemPerBlock/blockLimit);
+
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Block limit due to shared memory: " << blockLimit << endl;
+	    mos << "BLOCKSZ_DEBUG: Block limit due to shared memory: " << blockLimit << endl;
 #endif
+
 	    if (blockLimit < mainBlockLimit) mainBlockLimit= blockLimit;
 
 	    // The number of thread blocks required to simulate all groups
@@ -273,7 +296,7 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	      requiredBlocks+= ceil(((float) groupSize[kernel][group])/(blkSz*warpSize));
 	    }
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Required blocks (according to padded sum): " << requiredBlocks << endl;
+	    mos << "BLOCKSZ_DEBUG: Required blocks (according to padded sum): " << requiredBlocks << endl;
 #endif
 
 	    // Use a small block size if it allows all groups to occupy the device concurrently
@@ -281,8 +304,10 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	      bestBlkSz[kernel][device] = (unsigned int) blkSz*warpSize;
 	      deviceOccupancy[kernel][device]= blkSz*mainBlockLimit*deviceProp[device].multiProcessorCount;
 	      smallModel[kernel][device] = 1;
+
 #ifdef BLOCKSZ_DEBUG
-	      cout << "Small model situation detected; bestBlkSz: " << bestBlkSz[kernel][device] << endl;
+	      mos << "BLOCKSZ_DEBUG: Small model situation detected; bestBlkSz: " << bestBlkSz[kernel][device] << endl;
+	      mos << "BLOCKSZ_DEBUG: ... setting smallModel[" << kernel << "][" << device << "] to 1" << endl;
 #endif
 	      break; // for small model the first (smallest) block size allowing it is chosen
 	    }
@@ -292,8 +317,9 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
 	    if (newOccupancy > deviceOccupancy[kernel][device]) {
 	      bestBlkSz[kernel][device] = (unsigned int) blkSz*warpSize; 
 	      deviceOccupancy[kernel][device]= newOccupancy;
+
 #ifdef BLOCKSZ_DEBUG
-	      cout << "Small model not enabled; device occupancy criterion; deviceOccupancy " << deviceOccupancy[kernel][device] << "; blocksize for " << kernelName[kernel] << ": " << (unsigned int) blkSz * warpSize << endl;
+	      mos << "BLOCKSZ_DEBUG: Small model not enabled; device occupancy criterion; deviceOccupancy " << deviceOccupancy[kernel][device] << "; blocksize for " << kernelName[kernel] << ": " << (unsigned int) blkSz * warpSize << endl;
 #endif
 	    }
 	  }
@@ -318,51 +344,81 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
     // now decide the device ...
     int anySmall= 0;
     int *smallModelCnt= new int[deviceCount];
+    int *sumOccupancy= new int[deviceCount];
     float smVersion, bestSmVersion = 0.0;
     int bestSmallModelCnt= 0;
+    int bestDeviceOccupancy = 0;
     for (int device = devstart; device < devcount; device++) {
       smallModelCnt[device]= 0;
+      sumOccupancy[device]= 0;
       for (int kernel= 0; kernel < 3; kernel++) {
         #ifdef BLOCKSZ_DEBUG	
-          cout << "smallModel[" << kernel << "][" << device << "]= " << smallModel[kernel][device] << endl;
+          mos << "BLOCKSZ_DEBUG: smallModel[" << kernel << "][" << device << "]= " << smallModel[kernel][device] << endl;
         #endif
 	if (smallModel[kernel][device]) {
 	  smallModelCnt[device]++;
 	}
+	sumOccupancy[device]+= deviceOccupancy[kernel][device];
       }
+      smVersion= deviceProp[device].major+((float) deviceProp[device].minor/10);
+#ifdef BLOCKSZ_DEBUG
+      mos << "BLOCKSZ_DEBUG: Choosing device: First criterion: Small model count" << endl;
+#endif
       if (smallModelCnt[device] > bestSmallModelCnt) {
 	bestSmallModelCnt= smallModelCnt[device];
-	bestSmVersion= deviceProp[device].major+((float) deviceProp[device].minor/10);
-	bestDeviceOccupancy= deviceOccupancy[2][device];
+	bestDeviceOccupancy= sumOccupancy[device];
+	bestSmVersion= smVersion;
 	chosenDevice= device;
+
 #ifdef BLOCKSZ_DEBUG
-	cout << "Choosing based on larger small model count;  bestSmallModelCnt: " <<  bestSmallModelCnt << endl;
+	mos << "BLOCKSZ_DEBUG: Choosing based on larger small model count;  device: " << chosenDevice << "; bestSmallModelCnt: " <<  bestSmallModelCnt << endl;
 #endif
       }
       else {
-	if (smallModelCnt[device] == bestSmallModelCnt) {
-	  smVersion= deviceProp[device].major+((float) deviceProp[device].minor/10);
-	  if (smVersion > bestSmVersion) {
-	    bestSmVersion= smVersion;
-	    bestDeviceOccupancy= deviceOccupancy[2][device];
-	    chosenDevice= device;
+	  if (smallModelCnt[device] == bestSmallModelCnt) { 
 #ifdef BLOCKSZ_DEBUG
-	    cout << "Choosing based on equal small model count but better device;  bestSmallModelCnt: " <<  bestSmallModelCnt << "; bestSmVersion: " << bestSmVersion << endl;
+	      mos << "BLOCKSZ_DEBUG: Equal small model count: Next criterion: Occupancy" << endl;
 #endif
-	  }
-	}
-      }	    
-    }
-    if (bestSmallModelCnt == 0) {
-      // No small model situation: Choose device that enables higher neuron kernel occupancy.
-      for (int device = devstart; device < devcount; device++) {
-	if (deviceOccupancy[2][device] > bestDeviceOccupancy) {
+	      if (sumOccupancy[device] > bestDeviceOccupancy) {
+		  bestDeviceOccupancy = sumOccupancy[device];
+		  bestSmVersion= smVersion;
+		  chosenDevice= device;
 #ifdef BLOCKSZ_DEBUG
-	  cout << "Choose device based on occupancy; device: " << device << "; bestDeviceOccupancy: " << 	deviceOccupancy[2][device] << endl;
+		  mos << "BLOCKSZ_DEBUG: Choose device based on occupancy; device: " << chosenDevice << "; bestDeviceOccupancy (sum): " << bestDeviceOccupancy << endl;
 #endif	
-	  bestDeviceOccupancy = deviceOccupancy[2][device];
-	  chosenDevice= device;
-	}
+	      } 
+	      else {
+		  if (sumOccupancy[device] == bestDeviceOccupancy) {
+#ifdef BLOCKSZ_DEBUG
+		      mos << "BLOCKSZ_DEBUG: Equal device occupancy: Next criterion: smVersion" << endl;
+#endif      
+		      
+		      if (smVersion > bestSmVersion) {
+			  bestSmVersion= smVersion;
+			  chosenDevice= device;
+#ifdef BLOCKSZ_DEBUG
+			  mos << "BLOCKSZ_DEBUG: Choosing based on bestSmVersion; device:  " << chosenDevice <<  "; bestSmVersion: " << bestSmVersion << endl;
+#endif
+		      }
+#ifdef BLOCKSZ_DEBUG
+		      else {
+			  mos << "BLOCKSZ_DEBUG: Devices are tied; chosen device remains: " << chosenDevice << endl;
+		      }
+#endif
+		  }
+#ifdef BLOCKSZ_DEBUG
+		  else {
+		      mos << "BLOCKSZ_DEBUG: Device has inferirior occupancy; chosen device remains: " << chosenDevice << endl;
+		  }
+#endif
+
+	      }
+	  }
+#ifdef BLOCKSZ_DEBUG
+	  else {
+	      mos << "BLOCKSZ_DEBUG: Device has inferirior small model count; chosen device remains: " << chosenDevice << endl;
+	  }
+#endif	      
       }
     }
     synapseBlkSz = bestBlkSz[0][chosenDevice];
@@ -372,7 +428,7 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
     model = new NNmodel();
     modelDefinition(*model);
     mos << "Using device " << chosenDevice << " (" << deviceProp[chosenDevice].name << "), with up to ";
-    mos << bestDeviceOccupancy << " warps of neuron kernel occupancy." << endl;
+    mos << bestDeviceOccupancy << " warps of summed kernel occupancy." << endl;
     for (int kernel= 0; kernel < 3; kernel++) {
       delete[] bestBlkSz[kernel];
       delete[] smallModel[kernel];
@@ -383,6 +439,7 @@ int chooseDevice(ostream &mos,   //!< output stream for messages
     delete[] deviceOccupancy;   
     delete[] groupSize;
     delete[] smallModelCnt;
+    delete[] sumOccupancy;
   }
   else { // IF OPTIMISATION IS OFF: Simply choose the device with the most global memory.
     mos << "skipping block size optimisation..." << endl;
